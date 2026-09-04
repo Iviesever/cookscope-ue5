@@ -69,6 +69,15 @@ Done when: every P0 rule family has positive/negative fixtures, stable findings,
 - Finding baseline states are explicit `NotApplicable`, `New`, `Existing`, or `Worsened`. Numeric/byte/Severity increases count as worsening; identity uses Rule ID, asset, related asset, metric, and message.
 - Fresh full MQB suite exited `0`. UE build waited for an unrelated Build.bat via the official mutex, then compiled and linked CookScopeCore successfully with exit `0`; no other process was terminated.
 
+## 2026-09-05 — PACT-30 UE Data Validation reuse
+
+- RED: SampleEditor Data Validation Automation failed compilation because `CookScopeValidator.h` did not exist.
+- Implemented `UCookScopeValidator` against UE 5.8's `CanValidateAsset_Implementation(FAssetData, UObject, Context)` and `ValidateLoadedAsset_Implementation` signatures.
+- Validator loads the plugin's strict `CookScopeRules.json`, scans through `FCookScopeAssetScanner`, evaluates through the shared Core, and maps error findings to `AssetFails`, lower severities to `AssetWarning`, and clean assets to `AssetPasses`. No naming rule logic is duplicated in the validator.
+- First UBT failed because the public validator header exposed DataValidation while the module dependency was private; DataValidation moved to CookScopeEditor's Public dependencies. Second UBT compiled but SampleEditor directly called a DataValidation symbol without its own link dependency; adding the direct private dependency fixed the link. Final UBT exited `0`.
+- Added eighth deterministic `BadName` fixture and plugin default prefix rule. Fixture regeneration twice produced `CHANGED_COUNT=0` across all eight assets; BadName is 1,381 bytes, SHA-256 `5BEE24387BD4EFB59B8563443F756AF89B1DE0ED3524EBCC86E8E885E370D0B3`.
+- Unified UE run found exactly three PACT tests. `CookScope.PACT30.DataValidationReuse` reported `Result={Success}`: BadName returned Invalid with an error, while DA_Target returned Valid with zero errors. Automation and five-way Commandlet suite exited `0`.
+
 ## 2026-09-05 — PACT-20 deterministic typed graph core
 
 - RED: `mqb run Tests/Core/GraphContractTests.cpp --no-discover -I Plugins/CookScope/Source/CookScopeCore/Public --std 20 --profile release -o CookScopeGraphContractTests` exited `1` with C1083 because `cookscope/graph.h` did not exist.

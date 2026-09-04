@@ -54,7 +54,7 @@ bool FCookScopeAssetRegistryScanTest::RunTest(const FString& Parameters)
 		AddError(Result.Error);
 		return false;
 	}
-	TestEqual(TEXT("All deterministic fixtures are scanned"), static_cast<int32>(Result.Snapshot.assets.size()), 7);
+	TestEqual(TEXT("All deterministic fixtures are scanned"), static_cast<int32>(Result.Snapshot.assets.size()), 8);
 
 	const cookscope::AssetRecord* Target = FindAsset(Result.Snapshot, "/Game/CookScopeFixtures/Targets/DA_Target.DA_Target");
 	const cookscope::AssetRecord* Hard = FindAsset(Result.Snapshot, "/Game/CookScopeFixtures/Sources/DA_Hard.DA_Hard");

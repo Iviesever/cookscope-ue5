@@ -12,6 +12,7 @@ public class CookScopeSampleEditor : ModuleRules
 			"CookScopeCore",
 			"CookScopeEditor",
 			"CookScopeSample",
+			"DataValidation",
 			"Engine",
 			"GameplayTags",
 			"UnrealEd"

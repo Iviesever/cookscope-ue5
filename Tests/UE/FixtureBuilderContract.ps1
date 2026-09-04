@@ -31,6 +31,7 @@ $expected = @(
   'Sources\DA_Hard.uasset',
   'Sources\DA_Soft.uasset',
   'Sources\DA_Searchable.uasset',
+  'Naming\BadName.uasset',
   'Primary\DA_Primary.uasset',
   'Cycle\DA_CycleA.uasset',
   'Cycle\DA_CycleB.uasset'

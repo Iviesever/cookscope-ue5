@@ -31,13 +31,14 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 $automationText = [System.IO.File]::ReadAllText($automationLog)
-if ($automationText -notmatch 'Found 2 automation tests' -or
+if ($automationText -notmatch 'Found 3 automation tests' -or
     $automationText -notmatch 'Test Completed\. Result=\{Success\}.*CookScope\.PACT00\.EditorAndCommandletContracts' -or
     $automationText -notmatch 'Test Completed\. Result=\{Success\}.*CookScope\.PACT20\.RealAssetRegistryScan' -or
+    $automationText -notmatch 'Test Completed\. Result=\{Success\}.*CookScope\.PACT30\.DataValidationReuse' -or
     $automationText -notmatch '\*\*\*\* TEST COMPLETE\. EXIT CODE: 0 \*\*\*\*') {
   throw "CookScope Automation success markers were not found; log: $automationLog"
 }
 
 & (Join-Path $repositoryRoot 'Tests\UE\CommandletContract.ps1') -EngineRoot $EngineRoot
 
-Write-Output "PASS: UE build, fixtures, PACT-00/20 Automation, typed Registry scan, tab, and Commandlet exit contract"
+Write-Output "PASS: UE build, fixtures, PACT-00/20/30 Automation, typed Registry scan, Data Validation, tab, and Commandlet exit contract"

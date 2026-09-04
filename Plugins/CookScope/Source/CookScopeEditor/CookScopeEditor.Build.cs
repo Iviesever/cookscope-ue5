@@ -7,7 +7,8 @@ public class CookScopeEditor : ModuleRules
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 		PublicDependencyModuleNames.AddRange(new string[] {
 			"Core",
-			"CookScopeCore"
+			"CookScopeCore",
+			"DataValidation"
 		});
 		PrivateDependencyModuleNames.AddRange(new string[] {
 			"AssetRegistry",
@@ -15,6 +16,7 @@ public class CookScopeEditor : ModuleRules
 			"CoreUObject",
 			"Engine",
 			"LevelEditor",
+			"Projects",
 			"Slate",
 			"SlateCore",
 			"ToolMenus",
@@ -22,4 +24,3 @@ public class CookScopeEditor : ModuleRules
 		});
 	}
 }
-
