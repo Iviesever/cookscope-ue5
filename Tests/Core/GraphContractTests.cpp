@@ -1,5 +1,6 @@
 #include "cookscope/graph.h"
 
+#include <array>
 #include <iostream>
 #include <string>
 #include <string_view>
@@ -75,6 +76,27 @@ int main()
 		shortest.steps[1].kind != DependencyKind::Manage)
 	{
 		return Fail("shortest path must select the stable typed path");
+	}
+
+	const std::array<std::string_view, 2> rootsOne{"/Game/A.A", "/Game/C.C"};
+	const std::array<std::string_view, 2> rootsTwo{"/Game/C.C", "/Game/A.A"};
+	const auto whyOne = cookscope::ExplainWhyCooked(
+		built.graph, rootsOne, "/Game/D.D", cookscope::DependencyMask::All(), cookscope::OperationLimits{});
+	const auto whyTwo = cookscope::ExplainWhyCooked(
+		built.graph, rootsTwo, "/Game/D.D", cookscope::DependencyMask::All(), cookscope::OperationLimits{});
+	if (whyOne.state != OperationState::Complete || !whyOne.found || whyOne.root != "/Game/C.C" ||
+		whyOne.steps.size() != 1 || whyOne.steps[0].kind != DependencyKind::SearchableName ||
+		whyTwo.root != whyOne.root || whyTwo.steps != whyOne.steps)
+	{
+		return Fail("why-cooked explanation must choose the stable globally shortest root path");
+	}
+	cookscope::OperationLimits noDepth;
+	noDepth.maximumDepth = 0;
+	const auto limitedWhy = cookscope::ExplainWhyCooked(
+		built.graph, rootsOne, "/Game/D.D", cookscope::DependencyMask::All(), noDepth);
+	if (limitedWhy.state != OperationState::Truncated || limitedWhy.found)
+	{
+		return Fail("why-cooked explanation must expose traversal truncation");
 	}
 
 	cookscope::OperationLimits onePath;

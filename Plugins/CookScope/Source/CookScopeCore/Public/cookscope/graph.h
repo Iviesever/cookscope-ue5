@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <map>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -102,6 +103,17 @@ namespace cookscope
 		GraphError error;
 	};
 
+	struct WhyCookedResult
+	{
+		OperationState state = OperationState::Complete;
+		bool found = false;
+		std::string root;
+		std::vector<DependencyStep> steps;
+		std::size_t visitedNodes = 0;
+		std::size_t traversedEdges = 0;
+		GraphError error;
+	};
+
 	struct Cycle
 	{
 		std::vector<std::string> nodes;
@@ -139,9 +151,14 @@ namespace cookscope
 		std::string_view target,
 		DependencyMask mask,
 		OperationLimits limits);
+	[[nodiscard]] COOKSCOPECORE_API WhyCookedResult ExplainWhyCooked(
+		const DependencyGraph& graph,
+		std::span<const std::string_view> roots,
+		std::string_view target,
+		DependencyMask mask,
+		OperationLimits limits);
 	[[nodiscard]] COOKSCOPECORE_API CyclesResult FindCycles(
 		const DependencyGraph& graph,
 		DependencyMask mask,
 		OperationLimits limits);
 }
-

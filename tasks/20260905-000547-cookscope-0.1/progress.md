@@ -30,6 +30,13 @@ Done when: stable direct/reverse/path/cycle queries pass bounded tests and the U
 - Hard-only path tests prove traversal does not silently cross a Manage edge. Hard, Soft, Manage, and Searchable Name remain distinct enum values and sort order.
 - Fresh `scripts/Test.ps1`: exit `0`; seven Core/file tests plus process CLI passed; MQB discovered exactly seven production translation units.
 
+## 2026-09-05 — PACT-20 why-cooked explanation
+
+- RED: the graph contract added three calls to missing `ExplainWhyCooked`; MQB compilation exited `1` with C2039/C3861.
+- GREEN: the multi-root explanation sorts/deduplicates roots, reuses the bounded shortest-path engine, and chooses by path length, root name, then complete typed-step order. The targeted graph test exited `0`.
+- Root input order reversal produced byte-equivalent root/step results. A one-edge Searchable Name route beat a two-edge mixed route. A zero-depth limit propagated `Truncated` and returned no fabricated complete explanation.
+- Fresh `scripts/Test.ps1`: exit `0`; all Core/file/CLI tests passed with seven MQB production translation units.
+
 ## 2026-09-05 — PACT-10 strict JSON syntax layer
 
 - RED: `mqb run Tests/Core/JsonContractTests.cpp --no-discover -I Plugins/CookScope/Source/CookScopeCore/Public --std 20 --release -o CookScopeJsonContractTests` exited `1` with C1083 because `cookscope/json.h` did not exist.

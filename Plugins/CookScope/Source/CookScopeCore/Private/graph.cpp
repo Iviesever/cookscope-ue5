@@ -299,6 +299,63 @@ namespace cookscope
 		return result;
 	}
 
+	WhyCookedResult ExplainWhyCooked(
+		const DependencyGraph& graph,
+		std::span<const std::string_view> roots,
+		std::string_view target,
+		DependencyMask mask,
+		OperationLimits limits)
+	{
+		WhyCookedResult result;
+		std::vector<std::string> orderedRoots;
+		orderedRoots.reserve(roots.size());
+		for (const std::string_view root : roots) orderedRoots.emplace_back(root);
+		std::sort(orderedRoots.begin(), orderedRoots.end());
+		orderedRoots.erase(std::unique(orderedRoots.begin(), orderedRoots.end()), orderedRoots.end());
+		if (orderedRoots.empty())
+		{
+			result.state = OperationState::Failed;
+			result.error = {GraphErrorCode::UnknownNode, "why-cooked requires at least one root"};
+			return result;
+		}
+
+		bool truncated = false;
+		for (const std::string& root : orderedRoots)
+		{
+			PathResult candidate = FindShortestPath(graph, root, target, mask, limits);
+			result.visitedNodes += candidate.visitedNodes;
+			result.traversedEdges += candidate.traversedEdges;
+			if (candidate.state == OperationState::Failed)
+			{
+				result.state = OperationState::Failed;
+				result.error = std::move(candidate.error);
+				return result;
+			}
+			if (candidate.state == OperationState::Truncated) truncated = true;
+			if (!candidate.found) continue;
+
+			const bool shorter = !result.found || candidate.steps.size() < result.steps.size();
+			const bool sameLengthEarlierRoot = result.found && candidate.steps.size() == result.steps.size() && root < result.root;
+			const bool sameRootEarlierPath = result.found && candidate.steps.size() == result.steps.size() && root == result.root &&
+				std::lexicographical_compare(candidate.steps.begin(), candidate.steps.end(), result.steps.begin(), result.steps.end(), StepLess);
+			if (shorter || sameLengthEarlierRoot || sameRootEarlierPath)
+			{
+				result.found = true;
+				result.root = root;
+				result.steps = std::move(candidate.steps);
+			}
+		}
+
+		result.state = truncated ? OperationState::Truncated : OperationState::Complete;
+		if (truncated)
+		{
+			result.found = false;
+			result.root.clear();
+			result.steps.clear();
+		}
+		return result;
+	}
+
 	CyclesResult FindCycles(const DependencyGraph& graph, DependencyMask mask, OperationLimits limits)
 	{
 		CyclesResult result;
