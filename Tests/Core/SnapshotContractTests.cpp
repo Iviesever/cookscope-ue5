@@ -85,6 +85,20 @@ int main()
 		return Fail("snapshot canonical bytes must sort assets and end with LF");
 	}
 
+	std::string duplicateFacts = assetB;
+	duplicateFacts.replace(
+		duplicateFacts.find("[\"UI\",\"Default\"]"),
+		std::string("[\"UI\",\"Default\"]").size(),
+		"[\"UI\",\"Default\",\"Default\"]");
+	const std::string duplicateEdge = "{\"target\":\"/Game/A.A\",\"kind\":\"hard\"},";
+	duplicateFacts.insert(duplicateFacts.find("\"dependencies\":[") + std::string("\"dependencies\":[").size(), duplicateEdge);
+	const auto normalizedFacts = cookscope::ParseSnapshot(Snapshot(duplicateFacts));
+	if (!normalizedFacts.ok || normalizedFacts.value.assets[0].assetBundles.size() != 2 ||
+		normalizedFacts.value.assets[0].dependencies.size() != 4)
+	{
+		return Fail("duplicate Bundle and typed-edge facts must normalize to one semantic value");
+	}
+
 	const auto duplicateAsset = cookscope::ParseSnapshot(Snapshot(assetA + "," + assetA));
 	if (duplicateAsset.ok || duplicateAsset.error.code != SnapshotErrorCode::DuplicateAsset ||
 		duplicateAsset.error.path != "$.assets[1].objectPath")

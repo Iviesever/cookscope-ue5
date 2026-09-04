@@ -223,6 +223,7 @@ namespace cookscope
 					output.push_back(chunk);
 				}
 				std::sort(output.begin(), output.end());
+				output.erase(std::unique(output.begin(), output.end()), output.end());
 				return true;
 			}
 
@@ -237,6 +238,7 @@ namespace cookscope
 					output.push_back(value.array[index].scalar);
 				}
 				std::sort(output.begin(), output.end());
+				output.erase(std::unique(output.begin(), output.end()), output.end());
 				return true;
 			}
 
@@ -280,6 +282,11 @@ namespace cookscope
 				std::sort(output.begin(), output.end(), [](const DependencyEdge& left, const DependencyEdge& right) {
 					return left.kind < right.kind || (left.kind == right.kind && left.target < right.target);
 				});
+				output.erase(
+					std::unique(output.begin(), output.end(), [](const DependencyEdge& left, const DependencyEdge& right) {
+						return left.kind == right.kind && left.target == right.target;
+					}),
+					output.end());
 				return true;
 			}
 
@@ -469,6 +476,7 @@ namespace cookscope
 			value.object.emplace("chunkIds", std::move(chunks));
 
 			std::sort(asset.assetBundles.begin(), asset.assetBundles.end());
+			asset.assetBundles.erase(std::unique(asset.assetBundles.begin(), asset.assetBundles.end()), asset.assetBundles.end());
 			JsonValue bundles;
 			bundles.type = JsonType::Array;
 			for (const std::string& bundle : asset.assetBundles) bundles.array.push_back(SnapshotJsonString(bundle));
@@ -482,6 +490,11 @@ namespace cookscope
 			std::sort(asset.dependencies.begin(), asset.dependencies.end(), [](const DependencyEdge& left, const DependencyEdge& right) {
 				return left.kind < right.kind || (left.kind == right.kind && left.target < right.target);
 			});
+			asset.dependencies.erase(
+				std::unique(asset.dependencies.begin(), asset.dependencies.end(), [](const DependencyEdge& left, const DependencyEdge& right) {
+					return left.kind == right.kind && left.target == right.target;
+				}),
+				asset.dependencies.end());
 			JsonValue dependencies;
 			dependencies.type = JsonType::Array;
 			for (const DependencyEdge& edge : asset.dependencies)
