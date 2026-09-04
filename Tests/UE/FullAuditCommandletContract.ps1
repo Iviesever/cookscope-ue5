@@ -7,6 +7,10 @@ $repositoryRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'
 $project = Join-Path $repositoryRoot 'SampleProject\CookScopeSample.uproject'
 $editorCmd = Join-Path $EngineRoot 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
 $config = Join-Path $repositoryRoot 'Plugins\CookScope\Config\CookScopeRules.json'
+$cookRegistry = Join-Path $repositoryRoot 'SampleProject\Saved\Cooked\Windows\CookScopeSample\Metadata\DevelopmentAssetRegistry.bin'
+if (-not (Test-Path -LiteralPath $cookRegistry -PathType Leaf)) {
+  throw "Real Cook Development Asset Registry not found: $cookRegistry"
+}
 $sourceSha = (& git -C $repositoryRoot rev-parse HEAD).Trim()
 $evidenceBase = [System.IO.Path]::GetFullPath((Join-Path $repositoryRoot 'Artifacts\Evidence\PACT-70\FullAudit'))
 $runRoot = [System.IO.Path]::GetFullPath((Join-Path $evidenceBase ("run-" + [guid]::NewGuid().ToString('N'))))
@@ -38,6 +42,9 @@ function Invoke-FullAudit {
     "-output=$Output",
     "-source-sha=$sourceSha",
     '-scope=/Game/CookScopeFixtures',
+    "-cook-registry=$cookRegistry",
+    '-cook-platform=Windows',
+    '-cook-configuration=Development',
     "-fail-on-violation=$($FailOnViolation.ToString().ToLowerInvariant())",
     '-timeout-seconds=120'
   )
@@ -61,6 +68,12 @@ $json = Get-Content -LiteralPath (Join-Path $blockingOutput 'cookscope.json') -R
 if ($json.schema -ne 'cookscope.result/1' -or $json.provenance.sourceSha -ne $sourceSha -or
     @($json.findings | Where-Object { $_.ruleId -eq 'naming.asset-prefix' -and $_.assetPath -like '*/BadName.BadName' }).Count -ne 1) {
   throw 'Full audit JSON does not contain the real BadName rule result and source SHA'
+}
+$primary = @($json.assets | Where-Object objectPath -eq '/Game/CookScopeFixtures/Primary/DA_Primary.DA_Primary')
+$badName = @($json.assets | Where-Object objectPath -eq '/Game/CookScopeFixtures/Naming/BadName.BadName')
+if ($primary.Count -ne 1 -or $primary[0].cookedSizeKind -ne 'actual-cooked' -or
+    $badName.Count -ne 1 -or $badName[0].cookedSizeKind -ne 'unavailable') {
+  throw 'Full audit did not preserve actual Cook inclusion versus unavailable source-only asset'
 }
 
 $nonBlockingOutput = Join-Path $runRoot 'non-blocking'

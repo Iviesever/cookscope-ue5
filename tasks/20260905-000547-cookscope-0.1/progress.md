@@ -121,6 +121,15 @@ Done when: every P0 rule family has positive/negative fixtures, stable findings,
 - Unified regression then exited `0`: complete MQB suite; UBT; 8 fixtures; three PACT Automation tests; bootstrap `0/2/3/4/5`; full audit `2/0`; report assertions.
 - Timeout is checked fail-closed after synchronous scan/analysis and returns `5`; cancellable in-flight Editor scanning remains PACT-60 work.
 
+## 2026-09-05 — Actual Cook-size snapshot merge
+
+- Cook Registry Automation RED: UBT was initially up-to-date because its cached makefile did not enumerate the new untracked test. Re-running with official `-NoUBTMakefiles` produced the intended C1083 for missing `CookScopeCookSnapshotReader.h`. The flag is now part of `Build-Unreal.ps1`.
+- Implemented `FCookScopeCookSnapshotReader` with official `FAssetRegistryState::LoadFromDisk` for both Development and adjacent runtime Asset Registries. Runtime package membership proves Cook inclusion; Development `FAssetPackageData::DiskSize` supplies actual bytes.
+- Targeted `CookScope.PACT40.CookedRegistrySnapshot` Automation exited `0`: Primary fixture received non-zero `ActualCooked`; BadName remained `Unavailable`; Windows/Development provenance was set; no source/package estimate was relabeled.
+- Full-audit arguments now accept strict optional `-cook-registry`, `-cook-platform`, and `-cook-configuration`. Core argument RED for missing members changed to GREEN.
+- Full audit merges actual Cook sizes before baseline/diff/rules/reports. E2E JSON proved Primary actual-cooked and BadName unavailable while retaining blocking exit `2`, non-blocking exit `0`, and one real naming finding.
+- Fresh unified run exited `0`: complete MQB suite, UBT, 8 fixtures, four PACT Automation tests, bootstrap `0/2/3/4/5`, full audit `2/0`, and report assertions.
+
 ## 2026-09-05 — PACT-20 deterministic typed graph core
 
 - RED: `mqb run Tests/Core/GraphContractTests.cpp --no-discover -I Plugins/CookScope/Source/CookScopeCore/Public --std 20 --profile release -o CookScopeGraphContractTests` exited `1` with C1083 because `cookscope/graph.h` did not exist.

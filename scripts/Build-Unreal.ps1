@@ -13,8 +13,7 @@ if (-not (Test-Path -LiteralPath $project -PathType Leaf)) {
   throw "Sample Project not found: $project"
 }
 
-& $build CookScopeSampleEditor Win64 Development "-Project=$project" -WaitMutex -NoHotReloadFromIDE
+& $build CookScopeSampleEditor Win64 Development "-Project=$project" -WaitMutex -NoHotReloadFromIDE -NoUBTMakefiles
 if ($LASTEXITCODE -ne 0) {
   throw "UE Editor build failed with exit code $LASTEXITCODE"
 }
-

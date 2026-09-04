@@ -41,6 +41,9 @@ namespace cookscope
 		std::string sourceSha;
 		std::string scope = "/Game";
 		std::string baselinePath;
+		std::string cookRegistryPath;
+		std::string cookPlatform = "Windows";
+		std::string cookConfiguration = "Development";
 		bool failOnViolation = true;
 		std::uint32_t timeoutSeconds = 300;
 	};

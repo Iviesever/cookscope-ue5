@@ -31,6 +31,9 @@ int main()
 		"-source-sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"sv,
 		"-scope=/Game/CookScopeFixtures"sv,
 		"-baseline=baseline.json"sv,
+		"-cook-registry=DevelopmentAssetRegistry.bin"sv,
+		"-cook-platform=Windows"sv,
+		"-cook-configuration=Development"sv,
 		"-fail-on-violation=false"sv,
 		"-timeout-seconds=90"sv,
 	};
@@ -38,6 +41,8 @@ int main()
 	if (!parsed.ok || parsed.value.configPath != "Config/CookScopeRules.json" ||
 		parsed.value.outputDirectory != "Artifacts/Reports" || parsed.value.scope != "/Game/CookScopeFixtures" ||
 		parsed.value.baselinePath != "baseline.json" || parsed.value.failOnViolation || parsed.value.timeoutSeconds != 90 ||
+		parsed.value.cookRegistryPath != "DevelopmentAssetRegistry.bin" || parsed.value.cookPlatform != "Windows" ||
+		parsed.value.cookConfiguration != "Development" ||
 		parsed.value.sourceSha != "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
 	{
 		return Fail("valid full audit arguments must preserve every value");

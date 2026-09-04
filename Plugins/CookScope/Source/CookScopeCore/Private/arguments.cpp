@@ -151,6 +151,9 @@ namespace cookscope
 		constexpr std::string_view SourceShaPrefix = "-source-sha=";
 		constexpr std::string_view ScopePrefix = "-scope=";
 		constexpr std::string_view BaselinePrefix = "-baseline=";
+		constexpr std::string_view CookRegistryPrefix = "-cook-registry=";
+		constexpr std::string_view CookPlatformPrefix = "-cook-platform=";
+		constexpr std::string_view CookConfigurationPrefix = "-cook-configuration=";
 		constexpr std::string_view FailPrefix = "-fail-on-violation=";
 		constexpr std::string_view TimeoutPrefix = "-timeout-seconds=";
 		AuditArguments parsed;
@@ -159,6 +162,9 @@ namespace cookscope
 		bool hasSourceSha = false;
 		bool hasScope = false;
 		bool hasBaseline = false;
+		bool hasCookRegistry = false;
+		bool hasCookPlatform = false;
+		bool hasCookConfiguration = false;
 		bool hasFail = false;
 		bool hasTimeout = false;
 
@@ -181,6 +187,15 @@ namespace cookscope
 			if (status == AuditStringStatus::Failure) return failure;
 			if (status == AuditStringStatus::Success) continue;
 			status = read(BaselinePrefix, hasBaseline, parsed.baselinePath, "-baseline");
+			if (status == AuditStringStatus::Failure) return failure;
+			if (status == AuditStringStatus::Success) continue;
+			status = read(CookRegistryPrefix, hasCookRegistry, parsed.cookRegistryPath, "-cook-registry");
+			if (status == AuditStringStatus::Failure) return failure;
+			if (status == AuditStringStatus::Success) continue;
+			status = read(CookPlatformPrefix, hasCookPlatform, parsed.cookPlatform, "-cook-platform");
+			if (status == AuditStringStatus::Failure) return failure;
+			if (status == AuditStringStatus::Success) continue;
+			status = read(CookConfigurationPrefix, hasCookConfiguration, parsed.cookConfiguration, "-cook-configuration");
 			if (status == AuditStringStatus::Failure) return failure;
 			if (status == AuditStringStatus::Success) continue;
 

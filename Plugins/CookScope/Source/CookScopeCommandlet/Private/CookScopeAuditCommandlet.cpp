@@ -1,6 +1,7 @@
 #include "CookScopeAuditCommandlet.h"
 
 #include "CookScopeAssetScanner.h"
+#include "CookScopeCookSnapshotReader.h"
 
 #include "cookscope/arguments.h"
 #include "cookscope/bootstrap.h"
@@ -101,6 +102,22 @@ namespace
 			UE_LOG(LogCookScopeCommandlet, Error, TEXT("Asset scan failed: %s"), *Scan.Error);
 			return cookscope::CommandletExitCode(cookscope::AuditStatus::InternalError);
 		}
+		cookscope::Snapshot Candidate = Scan.Snapshot;
+		if (!Parsed.value.cookRegistryPath.empty())
+		{
+			const FString CookRegistryPath = FPaths::ConvertRelativePathToFull(UTF8_TO_TCHAR(Parsed.value.cookRegistryPath.c_str()));
+			const FCookScopeCookMergeResult Merge = FCookScopeCookSnapshotReader::MergeDevelopmentRegistry(
+				CookRegistryPath,
+				UTF8_TO_TCHAR(Parsed.value.cookPlatform.c_str()),
+				UTF8_TO_TCHAR(Parsed.value.cookConfiguration.c_str()),
+				Candidate);
+			if (!Merge.bSuccess)
+			{
+				UE_LOG(LogCookScopeCommandlet, Error, TEXT("Cook Registry merge failed: %s"), *Merge.Error);
+				return cookscope::CommandletExitCode(cookscope::AuditStatus::InternalError);
+			}
+			Candidate = Merge.Snapshot;
+		}
 
 		std::optional<cookscope::Snapshot> Baseline;
 		std::optional<cookscope::SnapshotDiffResult> Diff;
@@ -121,7 +138,7 @@ namespace
 				return cookscope::CommandletExitCode(cookscope::AuditStatus::InvalidInvocation);
 			}
 			Baseline = BaselineResult.value;
-			Diff = cookscope::DiffSnapshots(*Baseline, Scan.Snapshot);
+			Diff = cookscope::DiffSnapshots(*Baseline, Candidate);
 			if (!Diff->comparable)
 			{
 				UE_LOG(LogCookScopeCommandlet, Error, TEXT("Baseline is not comparable: %s"), UTF8_TO_TCHAR(Diff->error.c_str()));
@@ -130,11 +147,11 @@ namespace
 		}
 
 		const cookscope::AnalysisResult Analysis = cookscope::Evaluate(
-			Scan.Snapshot,
+			Candidate,
 			Config.value,
 			Baseline ? &*Baseline : nullptr);
 		const cookscope::ReportSet Reports = cookscope::RenderReports(
-			Scan.Snapshot,
+			Candidate,
 			Config.value,
 			Analysis,
 			Diff ? &*Diff : nullptr);
@@ -150,7 +167,7 @@ namespace
 			UE_LOG(LogCookScopeCommandlet, Error, TEXT("Unable to create output directory: %s"), *OutputDirectory);
 			return cookscope::CommandletExitCode(cookscope::AuditStatus::InternalError);
 		}
-		const std::string SnapshotJson = cookscope::WriteCanonicalSnapshot(Scan.Snapshot);
+		const std::string SnapshotJson = cookscope::WriteCanonicalSnapshot(Candidate);
 		if (!SaveUtf8(OutputDirectory / TEXT("cookscope.json"), Reports.json) ||
 			!SaveUtf8(OutputDirectory / TEXT("cookscope.sarif"), Reports.sarif) ||
 			!SaveUtf8(OutputDirectory / TEXT("cookscope.junit.xml"), Reports.junit) ||
