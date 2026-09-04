@@ -98,6 +98,18 @@ Done when: every P0 rule family has positive/negative fixtures, stable findings,
 - Fresh `scripts/Test.ps1`: exit `0`; all Core/file/rule/diff/CLI tests passed with nine MQB production translation units. UE Editor Development compiled and linked `diff.cpp` into CookScopeCore with exit `0`.
 - Finding/Severity delta integration and a controlled real-Cook baseline/candidate pair remain outstanding; the PACT-40-02 aggregate gate stays fail-closed.
 
+## 2026-09-05 — PACT-50 canonical JSON, SARIF, JUnit, and offline HTML core
+
+- RED: `ReportContractTests` failed C1083 because `cookscope/reports.h` did not exist.
+- GREEN: one immutable Snapshot/RuleConfig/AnalysisResult/Diff rendered byte-identical JSON, SARIF, JUnit, and HTML on repeated calls.
+- Canonical JSON carries provenance, summary, rules, assets, findings, diagnostics, typed dependency paths, measurement/budget evidence, baseline state, and diff. SARIF reports version 2.1.0 with stable Rule IDs/messages/asset locations. JUnit uses one stable failing testcase per finding.
+- HTML embeds the same canonical JSON, has no CDN/font/script/style URL, neutralizes `</script>` with `\\u003c`, and exposes severity/rule/class/path/size controls plus dependency details and size delta.
+- Targeted test wrote ignored evidence: JSON 1,289 bytes SHA-256 `8EEE10F8243C65F449921FF89444896A27A07FCEF17E11F8B7873CC27B958014`; SARIF 538 `061523CB42429E261E3844576672F2C2D2D988DD5B27B4164BBCCBF973AD8E21`; JUnit 349 `FCEFC91F828678E16D0B9F1D3FD513325F4F1D9DAFC1C9BAA1731CECFC36152E`; HTML 5,759 `4BE6F0D4B16E5587D9ED7230DCC491430CBCFCDF2D1AF2DCF83AADA28F0B52C4`.
+- Python standard `json` parsed JSON/SARIF and confirmed SARIF 2.1.0; `xml.etree.ElementTree` parsed JUnit and confirmed one failure. No external package was installed.
+- First UBT report build found anonymous `DependencyName` collisions between Diff/Snapshot in Unity. Snapshot/Diff/Report/Rule formatter helpers received file-responsibility prefixes; UBT then exited `0` without disabling Unity.
+- Real in-app browser loaded the localhost HTML at desktop and 390x844. Severity and Path Search hid/shown rows correctly; narrow controls formed two columns and table remained horizontally accessible. Console warning/error lists were empty before and after interactions. The temporary tab/server were closed.
+- Chunk/Bundle-specific HTML presentation and full baseline/candidate interaction remain outstanding, so PACT-50-02 stays fail-closed despite the verified responsive foundation.
+
 ## 2026-09-05 — PACT-20 deterministic typed graph core
 
 - RED: `mqb run Tests/Core/GraphContractTests.cpp --no-discover -I Plugins/CookScope/Source/CookScopeCore/Public --std 20 --profile release -o CookScopeGraphContractTests` exited `1` with C1083 because `cookscope/graph.h` did not exist.

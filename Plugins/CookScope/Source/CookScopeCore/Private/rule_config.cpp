@@ -305,7 +305,7 @@ namespace cookscope
 			return result;
 		}
 
-		std::string_view SeverityName(Severity severity)
+		std::string_view RuleSeverityName(Severity severity)
 		{
 			switch (severity)
 			{
@@ -316,7 +316,7 @@ namespace cookscope
 			return "error";
 		}
 
-		std::string_view BaselineName(BaselineBehavior baseline)
+		std::string_view RuleBaselineName(BaselineBehavior baseline)
 		{
 			switch (baseline)
 			{
@@ -352,7 +352,7 @@ namespace cookscope
 			value.object.emplace("id", RuleJsonString(rule.id));
 			value.object.emplace("name", RuleJsonString(rule.name));
 			value.object.emplace("description", RuleJsonString(rule.description));
-			value.object.emplace("severity", RuleJsonString(std::string(SeverityName(rule.severity))));
+			value.object.emplace("severity", RuleJsonString(std::string(RuleSeverityName(rule.severity))));
 
 			JsonValue scope;
 			scope.type = JsonType::Object;
@@ -375,8 +375,8 @@ namespace cookscope
 				exceptions.array.push_back(std::move(item));
 			}
 			value.object.emplace("exceptions", std::move(exceptions));
-			value.object.emplace("baseline", RuleJsonString(std::string(BaselineName(rule.baseline))));
-			value.object.emplace("failThreshold", RuleJsonString(std::string(SeverityName(rule.failThreshold))));
+			value.object.emplace("baseline", RuleJsonString(std::string(RuleBaselineName(rule.baseline))));
+			value.object.emplace("failThreshold", RuleJsonString(std::string(RuleSeverityName(rule.failThreshold))));
 			value.object.emplace("helpUri", RuleJsonString(rule.helpUri));
 			ruleArray.array.push_back(std::move(value));
 		}

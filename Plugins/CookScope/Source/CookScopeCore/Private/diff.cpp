@@ -108,7 +108,7 @@ namespace cookscope
 			return before > after ? -static_cast<std::int64_t>(magnitude) : static_cast<std::int64_t>(magnitude);
 		}
 
-		std::string AssetChangeName(AssetChangeKind kind)
+		std::string DiffAssetChangeName(AssetChangeKind kind)
 		{
 			switch (kind)
 			{
@@ -120,7 +120,7 @@ namespace cookscope
 			return "modified";
 		}
 
-		std::string EdgeChangeName(EdgeChangeKind kind)
+		std::string DiffEdgeChangeName(EdgeChangeKind kind)
 		{
 			switch (kind)
 			{
@@ -131,7 +131,7 @@ namespace cookscope
 			return "added";
 		}
 
-		std::string DependencyName(DependencyKind kind)
+		std::string DiffDependencyName(DependencyKind kind)
 		{
 			switch (kind)
 			{
@@ -270,7 +270,7 @@ namespace cookscope
 		{
 			JsonValue item;
 			item.type = JsonType::Object;
-			item.object.emplace("kind", DiffJsonString(AssetChangeName(change.kind)));
+			item.object.emplace("kind", DiffJsonString(DiffAssetChangeName(change.kind)));
 			item.object.emplace("baselinePath", DiffJsonString(change.baselinePath));
 			item.object.emplace("candidatePath", DiffJsonString(change.candidatePath));
 			JsonValue fields;
@@ -287,11 +287,11 @@ namespace cookscope
 		{
 			JsonValue item;
 			item.type = JsonType::Object;
-			item.object.emplace("kind", DiffJsonString(EdgeChangeName(change.kind)));
+			item.object.emplace("kind", DiffJsonString(DiffEdgeChangeName(change.kind)));
 			item.object.emplace("source", DiffJsonString(change.source));
 			item.object.emplace("target", DiffJsonString(change.target));
-			item.object.emplace("beforeKind", change.beforeKind ? DiffJsonString(DependencyName(*change.beforeKind)) : JsonValue{});
-			item.object.emplace("afterKind", change.afterKind ? DiffJsonString(DependencyName(*change.afterKind)) : JsonValue{});
+			item.object.emplace("beforeKind", change.beforeKind ? DiffJsonString(DiffDependencyName(*change.beforeKind)) : JsonValue{});
+			item.object.emplace("afterKind", change.afterKind ? DiffJsonString(DiffDependencyName(*change.afterKind)) : JsonValue{});
 			edges.array.push_back(std::move(item));
 		}
 		root.object.emplace("edgeChanges", std::move(edges));

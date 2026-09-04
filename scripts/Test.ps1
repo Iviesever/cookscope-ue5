@@ -119,6 +119,16 @@ try {
     "$privateCore/json.cpp"
   ) -Output 'CookScopeSnapshotDiffContractTests'
 
+  Invoke-MqbTest -Sources @(
+    'Tests/Core/ReportContractTests.cpp',
+    "$privateCore/reports.cpp",
+    "$privateCore/diff.cpp",
+    "$privateCore/rules.cpp",
+    "$privateCore/graph.cpp",
+    "$privateCore/rule_config.cpp",
+    "$privateCore/json.cpp"
+  ) -Output 'CookScopeReportContractTests'
+
   & (Join-Path $PSScriptRoot 'Build.ps1') -Configuration $Configuration
   & (Join-Path $PSScriptRoot '..\Tests\CLI\BootstrapCliContract.ps1') -Executable '.mqb/bin/CookScopeCli.exe'
 }

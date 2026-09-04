@@ -390,7 +390,7 @@ namespace cookscope
 			return result;
 		}
 
-		std::string_view MeasurementName(MeasurementKind kind)
+		std::string_view SnapshotMeasurementName(MeasurementKind kind)
 		{
 			switch (kind)
 			{
@@ -403,7 +403,7 @@ namespace cookscope
 			return "unavailable";
 		}
 
-		std::string_view DependencyName(DependencyKind kind)
+		std::string_view SnapshotDependencyName(DependencyKind kind)
 		{
 			switch (kind)
 			{
@@ -419,7 +419,7 @@ namespace cookscope
 		{
 			JsonValue result;
 			result.type = JsonType::Object;
-			result.object.emplace("kind", SnapshotJsonString(std::string(MeasurementName(measurement.kind))));
+			result.object.emplace("kind", SnapshotJsonString(std::string(SnapshotMeasurementName(measurement.kind))));
 			if (measurement.bytes.has_value()) result.object.emplace("bytes", SnapshotJsonNumber(*measurement.bytes));
 			return result;
 		}
@@ -489,7 +489,7 @@ namespace cookscope
 				JsonValue dependency;
 				dependency.type = JsonType::Object;
 				dependency.object.emplace("target", SnapshotJsonString(edge.target));
-				dependency.object.emplace("kind", SnapshotJsonString(std::string(DependencyName(edge.kind))));
+				dependency.object.emplace("kind", SnapshotJsonString(std::string(SnapshotDependencyName(edge.kind))));
 				dependencies.array.push_back(std::move(dependency));
 			}
 			value.object.emplace("dependencies", std::move(dependencies));
