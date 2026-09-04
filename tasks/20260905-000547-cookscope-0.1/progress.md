@@ -7,6 +7,8 @@
 - PR #1 was marked Ready and GitHub reported it `MERGEABLE/CLEAN`. It was normally merged as two-parent commit `2c3ae0ad79730185ec42da6c5b2d1b5360d765b8`; remote and local feature branches were deleted.
 - Replayed the merged `main`: all 16 Core contracts plus CLI passed; UBT rebuilt 29 actions; 20 fixtures, all 7 UE PACT tests, Commandlet 0/2/3/4/5, wrapper 4/0/2 and timeout 5, and the exact one-asset/+892-byte Cook diff passed.
 - GitHub Actions run `33929171217` was created for the main push and is queued for the explicitly labelled UE 5.8/MQB self-hosted Windows runner. No hosted-run success is claimed.
+- Release-readiness documentation was committed as `a0ddb34`. Annotated tag `v0.1.0` was pushed and the public GitHub Release was published from the checked-in release notes.
+- GitHub release verification reports `isDraft=false`, `isPrerelease=false`, and `assets=[]`. No local package, Cook output, archive, binary, or log was uploaded.
 
 ## 2026-09-05 — Third independent audit remediation
 

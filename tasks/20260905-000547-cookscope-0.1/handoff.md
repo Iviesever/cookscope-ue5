@@ -2,7 +2,7 @@
 
 ## Current state
 
-The public repository is `Iviesever/cookscope-ue5`, and local `main` tracks `origin/main`. PR #1 was created as Draft, marked Ready, and normally merged as `2c3ae0a`; both feature branches were deleted. The merge-result Core/CLI and full UE suites pass. The final independent read-only audit reports 0 Blocker and 0 High. The annotated tag and source-only Release are the remaining release operations.
+The public repository is `Iviesever/cookscope-ue5`, and local `main` tracks `origin/main`. PR #1 was created as Draft, marked Ready, and normally merged as `2c3ae0a`; both feature branches were deleted. The merge-result Core/CLI and full UE suites pass. The final independent read-only audit reports 0 Blocker and 0 High. Annotated tag `v0.1.0` and the public source-only Release are published, with the GitHub API reporting an empty custom `assets` array.
 
 ## Immutable constraints
 
@@ -16,4 +16,4 @@ The public repository is `Iviesever/cookscope-ue5`, and local `main` tracks `ori
 
 ## Resume point
 
-Commit this verified release-readiness state on `main`, create and push annotated tag `v0.1.0`, publish a source-only GitHub Release, verify its custom `assets` array is empty, then record final release facts.
+No implementation or release action remains. Generated local build/test evidence may be cleaned according to the final cleanup inventory; future builds regenerate it.

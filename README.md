@@ -2,7 +2,7 @@
 
 CookScope is a source-only Unreal Engine 5.8 Editor plugin, Commandlet, and sample project for deterministic Asset Registry dependency analysis and real Cook-budget enforcement.
 
-> Local `v0.1.0` candidate: Core, UE Automation, Commandlet, real Cook diff, reports, Editor UI, and plugin packaging are exercised locally. GitHub PR/Release publication is intentionally not claimed because no authenticated remote operation was authorized.
+> Released as source-only [`v0.1.0`](https://github.com/Iviesever/cookscope-ue5/releases/tag/v0.1.0) after the normal merge of [PR #1](https://github.com/Iviesever/cookscope-ue5/pull/1). Core, UE Automation, Commandlet, real Cook diff, reports, Editor UI, and plugin packaging were verified locally; the GitHub Release has no custom assets.
 
 | Real UE 5.8 Editor tab | Real offline HTML report |
 |---|---|

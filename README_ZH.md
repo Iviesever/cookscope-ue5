@@ -2,7 +2,7 @@
 
 CookScope 是一个 source-only 的 Unreal Engine 5.8 Editor 插件、Commandlet 与最小 Sample Project，用于确定性的 Asset Registry 依赖分析和真实 Cook 预算审计。
 
-> 当前是本地 `v0.1.0` Alpha 候选版。Core、UE Automation、Commandlet、真实 Cook diff、报告、Editor UI 与插件打包均在本机验证；由于未授权 GitHub 登录，本文不宣称远程仓库、PR 或 Release 已完成。
+> 已发布 source-only [`v0.1.0`](https://github.com/Iviesever/cookscope-ue5/releases/tag/v0.1.0)，[PR #1](https://github.com/Iviesever/cookscope-ue5/pull/1) 采用普通 merge commit 合并。Core、UE Automation、Commandlet、真实 Cook diff、报告、Editor UI 与插件打包均在本机验证；GitHub Release 没有自定义附件。
 
 | 真实 UE 5.8 Editor Tab | 真实离线 HTML 报告 |
 |---|---|
