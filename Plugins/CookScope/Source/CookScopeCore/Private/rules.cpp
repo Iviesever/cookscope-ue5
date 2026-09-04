@@ -828,6 +828,92 @@ namespace cookscope
 				result.findings.push_back(std::move(finding));
 			}
 		}
+
+		template <typename Predicate>
+		void EvaluateAggregateBudget(
+			const Snapshot& snapshot,
+			const RuleDefinition& rule,
+			AnalysisResult& result,
+			std::string findingPath,
+			Predicate&& predicate)
+		{
+			std::uint64_t budget = 0;
+			const JsonValue* measurement = Parameter(rule, "measurement");
+			if (!ReadBudget(rule, budget) || !measurement || measurement->type != JsonType::String ||
+				RequestedKind(measurement->scalar) == MeasurementKind::Unavailable)
+			{
+				AddParameterDiagnostic(result, rule, "aggregate budget requires unsigned budgetBytes and a known measurement");
+				return;
+			}
+
+			std::uint64_t total = 0;
+			bool complete = true;
+			for (const AssetRecord& asset : snapshot.assets)
+			{
+				if (!MatchesScope(rule, asset.objectPath) || !predicate(asset)) continue;
+				const SizeMeasurement* measured = SelectMeasurement(asset, measurement->scalar);
+				if (!measured || !measured->bytes)
+				{
+					result.diagnostics.push_back({
+						rule.id,
+						asset.objectPath,
+						AnalysisDiagnosticCode::MeasurementUnavailable,
+						"aggregate measurement is unavailable"});
+					complete = false;
+					continue;
+				}
+				if (*measured->bytes > std::numeric_limits<std::uint64_t>::max() - total)
+				{
+					AddParameterDiagnostic(result, rule, "aggregate byte total overflowed uint64");
+					complete = false;
+					continue;
+				}
+				total += *measured->bytes;
+			}
+			if (complete && total > budget)
+			{
+				Finding finding;
+				finding.ruleId = rule.id;
+				finding.assetPath = std::move(findingPath);
+				finding.severity = rule.severity;
+				finding.message = "aggregate size exceeds budget";
+				finding.measurementKind = RequestedKind(measurement->scalar);
+				finding.observedBytes = total;
+				finding.budgetBytes = budget;
+				result.findings.push_back(std::move(finding));
+			}
+		}
+
+		void EvaluateDirectoryBudget(const Snapshot& snapshot, const RuleDefinition& rule, AnalysisResult& result)
+		{
+			std::vector<std::string> patterns;
+			if (!ReadStringArrayParameter(rule, "patterns", patterns))
+			{
+				AddParameterDiagnostic(result, rule, "directory budget needs patterns");
+				return;
+			}
+			EvaluateAggregateBudget(snapshot, rule, result, patterns.front(), [&](const AssetRecord& asset) {
+				return MatchesAny(patterns, asset.objectPath);
+			});
+		}
+
+		void EvaluateTypeBudget(const Snapshot& snapshot, const RuleDefinition& rule, AnalysisResult& result)
+		{
+			std::string assetClass;
+			if (!ReadStringParameter(rule, "assetClass", assetClass))
+			{
+				AddParameterDiagnostic(result, rule, "type budget needs assetClass");
+				return;
+			}
+			EvaluateAggregateBudget(snapshot, rule, result, assetClass, [&](const AssetRecord& asset) {
+				return asset.assetClass == assetClass;
+			});
+		}
+
+		void EvaluateProjectBudget(const Snapshot& snapshot, const RuleDefinition& rule, AnalysisResult& result)
+		{
+			EvaluateAggregateBudget(snapshot, rule, result, "$project", [](const AssetRecord&) { return true; });
+		}
 	}
 
 	bool GlobMatches(std::string_view pattern, std::string_view value)
@@ -894,6 +980,9 @@ namespace cookscope
 			else if (rule.id == "redirector.present") EvaluateRedirector(snapshot, rule, result);
 			else if (rule.id == "reference.missing") EvaluateMissingReferences(snapshot, rule, result);
 			else if (rule.id == "naming.ambiguous") EvaluateAmbiguousNames(snapshot, rule, result);
+			else if (rule.id == "budget.directory") EvaluateDirectoryBudget(snapshot, rule, result);
+			else if (rule.id == "budget.type") EvaluateTypeBudget(snapshot, rule, result);
+			else if (rule.id.starts_with("budget.project")) EvaluateProjectBudget(snapshot, rule, result);
 			else if (rule.id.starts_with("budget.")) EvaluateBudget(snapshot, rule, result);
 			else result.diagnostics.push_back({rule.id, {}, AnalysisDiagnosticCode::UnsupportedRule, "rule is not implemented"});
 		}
