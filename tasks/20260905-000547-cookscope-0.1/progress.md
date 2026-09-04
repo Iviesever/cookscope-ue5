@@ -136,6 +136,12 @@ Done when: every P0 rule family has positive/negative fixtures, stable findings,
 - Saved canonical baseline `Examples/snapshots/cookscope-real-baseline.json`: 6,646 bytes, SHA-256 `CE6230B66FADC0B78D8F1F2204EE087CD31B6261F196321D30AA5B17CD075E8B`.
 - Baseline contains 8 real fixture assets and exactly 2 ActualCooked records; it contains no host absolute path. The file is copied byte-for-byte from Commandlet output rather than hand-edited.
 
+## 2026-09-05 — Controlled real Cook candidate fixture
+
+- RED: fixture process completed but the updated test could not find `/Game/CookScopeFixtures/Primary/DA_Candidate.uasset`.
+- GREEN: added one deterministic Primary fixture with Default bundle to the existing Target. UBT exited `0`; builder process generated and detected 9 total fixtures.
+- The candidate is committed before recooking so its Cook output and diff can bind to a concrete Git SHA.
+
 ## 2026-09-05 — PACT-20 deterministic typed graph core
 
 - RED: `mqb run Tests/Core/GraphContractTests.cpp --no-discover -I Plugins/CookScope/Source/CookScopeCore/Public --std 20 --profile release -o CookScopeGraphContractTests` exited `1` with C1083 because `cookscope/graph.h` did not exist.

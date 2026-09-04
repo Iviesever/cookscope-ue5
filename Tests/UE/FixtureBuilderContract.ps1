@@ -33,6 +33,7 @@ $expected = @(
   'Sources\DA_Searchable.uasset',
   'Naming\BadName.uasset',
   'Primary\DA_Primary.uasset',
+  'Primary\DA_Candidate.uasset',
   'Cycle\DA_CycleA.uasset',
   'Cycle\DA_CycleB.uasset'
 )

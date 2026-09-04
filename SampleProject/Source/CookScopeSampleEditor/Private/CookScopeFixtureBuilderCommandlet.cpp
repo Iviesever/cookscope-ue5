@@ -94,6 +94,7 @@ int32 UCookScopeFixtureBuilderCommandlet::Main(const FString& Params)
 	FFixture Searchable = FindOrCreateFixture(TEXT("Sources/DA_Searchable"), TEXT("DA_Searchable"));
 	FFixture BadName = FindOrCreateFixture(TEXT("Naming/BadName"), TEXT("BadName"));
 	FFixture Primary = FindOrCreateFixture(TEXT("Primary/DA_Primary"), TEXT("DA_Primary"));
+	FFixture Candidate = FindOrCreateFixture(TEXT("Primary/DA_Candidate"), TEXT("DA_Candidate"));
 	FFixture CycleA = FindOrCreateFixture(TEXT("Cycle/DA_CycleA"), TEXT("DA_CycleA"));
 	FFixture CycleB = FindOrCreateFixture(TEXT("Cycle/DA_CycleB"), TEXT("DA_CycleB"));
 
@@ -107,12 +108,14 @@ int32 UCookScopeFixtureBuilderCommandlet::Main(const FString& Params)
 	BadName.Asset->FixtureId = TEXT("fixture.naming-invalid");
 	Primary.Asset->FixtureId = TEXT("fixture.primary");
 	Primary.Asset->BundledReference = TSoftObjectPtr<UCookScopeFixtureAsset>(Target.Asset);
+	Candidate.Asset->FixtureId = TEXT("fixture.candidate-new");
+	Candidate.Asset->BundledReference = TSoftObjectPtr<UCookScopeFixtureAsset>(Target.Asset);
 	CycleA.Asset->FixtureId = TEXT("fixture.cycle-a");
 	CycleA.Asset->HardReference = CycleB.Asset;
 	CycleB.Asset->FixtureId = TEXT("fixture.cycle-b");
 	CycleB.Asset->HardReference = CycleA.Asset;
 
-	const TArray<FFixture> Fixtures = {Target, Hard, Soft, Searchable, BadName, Primary, CycleA, CycleB};
+	const TArray<FFixture> Fixtures = {Target, Hard, Soft, Searchable, BadName, Primary, Candidate, CycleA, CycleB};
 	for (const FFixture& Fixture : Fixtures)
 	{
 		if (!Fixture.Asset || !SaveFixture(Fixture))
