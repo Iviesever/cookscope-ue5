@@ -8,7 +8,7 @@
 
 ## UE integration
 
-`pwsh -File scripts/Test-Unreal.ps1` builds with UBT, regenerates 13 deterministic fixtures, runs 6 Editor Automation tests, then executes the bootstrap Commandlet matrix, full audit/timeout checks, and real Cook diff checks.
+`pwsh -File scripts/Test-Unreal.ps1` builds with UBT, regenerates 20 deterministic fixtures, runs 7 Editor Automation tests, then executes the bootstrap Commandlet matrix, cooperative/hard audit timeout checks, and real Cook diff checks.
 
 The Automation set covers production tab loading, typed Registry/Asset Manager edges, Data Validation reuse, real resource metadata, Cook registry merging, Editor filtering/comparison/why-cooked/export, cancellation, and shutdown.
 

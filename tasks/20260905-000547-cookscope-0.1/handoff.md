@@ -2,7 +2,7 @@
 
 ## Current state
 
-The dedicated local repository has a verified contract baseline at `2bede4a50f47ee332e11f2dfbb90beb596c9dc0e`. Work is on `feat/cookscope-0.1`. MQB Core/CLI, UE 5.8 Editor/Automation, typed Registry/graph, rules/Data Validation, real Zen Cook with actual sizes, controlled real-Cook diff, four report formats/browser foundation, strict bootstrap/full-audit Commandlets, BuildPlugin, and fresh extraction are GREEN. Full Editor workflow, clean-source replay, final package/Cook replay, audit, and remote release remain outstanding.
+The dedicated local repository is on `feat/cookscope-0.1`. Core/CLI, UE 5.8 Editor, typed Registry/Manager graph, 20 real fixtures, Data Validation, real Zen Cook, four reports, bounded Slate workflow, cooperative/hard timeouts, clean-source smoke, BuildPlugin, and fresh extraction have all passed at least one source-bound run. The initial independent audit found six High issues; implementation fixes are committed at `a27f210`. A new real baseline `66256ac` and candidate `f204b3b` produce exactly one Added 892-byte Cook asset. Final full-suite/package/clean-source replay and independent audit rerun remain.
 
 ## Immutable constraints
 
@@ -16,4 +16,4 @@ The dedicated local repository has a verified contract baseline at `2bede4a50f47
 
 ## Resume point
 
-Commit the full-audit Commandlet slice. Next bind actual Cook Registry sizes into snapshots and generate a controlled real baseline/candidate diff, then expand the Editor workflow. Final verification requires new BuildPlugin and Cook artifacts at final source SHA.
+Finish documentation/evidence updates, run the complete Core/UE/docs suite on the final commit, rebuild and smoke the final source-bound plugin package, run clean-source smoke, then request an independent read-only audit rerun. Do not perform GitHub authentication or remote release work.

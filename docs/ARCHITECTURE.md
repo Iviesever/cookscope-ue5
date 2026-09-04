@@ -66,7 +66,7 @@ Strict config
 - Invalid config, unknown fields, duplicate Rule IDs, illegal thresholds, corrupt snapshots, schema mismatch, incompatible engine/platform/cook settings, overflowed limits, and report serialization failure fail closed.
 - Bounded graph operations always report `complete`, `truncated`, or `failed`; truncation is never silently presented as a complete answer.
 - Commandlet result codes are stable: `0` success, `2` policy violation, `3` invalid invocation/config, `4` internal/IO/scan error, and `5` timeout/cancel.
-- Editor operations are cancellable and have explicit lifetime ownership. Registry acquisition is scoped and synchronous on the permitted Editor thread; traversal/rule/diff/report work runs off-thread and drains before module shutdown.
+- Editor operations are cancellable and have explicit lifetime ownership. Registry acquisition queries already indexed state with explicit asset/dependency/input-byte limits on the permitted Editor thread; traversal/rule/diff/report work runs off-thread and drains before module shutdown.
 
 ## Test strategy
 

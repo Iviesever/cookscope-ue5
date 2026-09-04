@@ -14,14 +14,14 @@ Shortest full audit command:
 UnrealEditor-Cmd.exe SampleProject/CookScopeSample.uproject -run=CookScopeAudit -config=Plugins/CookScope/Config/CookScopeRules.json -output=Artifacts/Reports -source-sha=<40-hex-sha>
 ```
 
-The sample answers “why was this cooked?” with a typed chain such as `CookScopeFixture:DA_Primary → /Game/CookScopeFixtures/Targets/DA_Target` through Soft/Manage edges. Its controlled baseline/candidate pair adds exactly `/Game/CookScopeFixtures/Primary/DA_Candidate.DA_Candidate`, measured from the real Development Asset Registry at **892 actual-cooked bytes**.
+The sample answers “why was this cooked?” with a typed chain such as `CookScopeFixture:DA_Primary → /Game/CookScopeFixtures/Targets/DA_Target` through Soft/Manage edges. Its controlled baseline `66256ac` and candidate `f204b3b` add exactly `/Game/CookScopeFixtures/Primary/DA_Candidate.DA_Candidate`, measured from separate real Development Asset Registries at **892 actual-cooked bytes**.
 
 ## Verified surface
 
 | Area | Local evidence |
 |---|---|
 | Deterministic Core | 16 C++ contract executables plus a process-level CLI contract via MQB |
-| UE integration | 6 Editor Automation tests over 13 deterministic `.uasset` fixtures |
+| UE integration | 7 Editor Automation tests over 20 deterministic `.uasset` fixtures |
 | Commandlet | Clean/violation/invocation/internal/timeout exits `0/2/3/4/5` |
 | Cook and diff | UE 5.8 Zen Cook metadata; 9 scoped assets, 3 actual-cooked, one 892-byte candidate addition |
 | Reports | Canonical JSON, SARIF 2.1.0, JUnit XML, responsive self-contained HTML |

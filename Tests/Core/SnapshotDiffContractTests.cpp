@@ -146,6 +146,15 @@ int main()
 	{
 		return Fail("snapshot input order must not change canonical diff bytes");
 	}
+	const cookscope::SnapshotDiffResult caseOnly = cookscope::DiffSnapshots(
+		Snapshot({Asset("/Game/Unicode/Ässet.Ässet", 1)}),
+		Snapshot({Asset("/Game/Unicode/ässet.ässet", 1)}));
+	if (!caseOnly.comparable || caseOnly.assetChanges.size() != 2 ||
+		caseOnly.assetChanges[0].kind != AssetChangeKind::Removed ||
+		caseOnly.assetChanges[1].kind != AssetChangeKind::Added)
+	{
+		return Fail("Object Path identity must remain explicit bytewise and case-sensitive for Unicode input");
+	}
 
 	const cookscope::SnapshotDiffResult incompatible = cookscope::DiffSnapshots(baseline, Snapshot({candidateA}, "Linux"));
 	if (incompatible.comparable || incompatible.error != "snapshot platform mismatch")

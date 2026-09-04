@@ -10,7 +10,7 @@ Status: local source-only Alpha candidate; no GitHub Release has been published.
 - Real Development Asset Registry size merge and baseline/candidate diff.
 - JSON, SARIF 2.1.0, JUnit XML, and offline responsive HTML.
 - Data Validation integration and strict Commandlet exits `0/2/3/4/5`.
-- Thirteen deterministic project fixtures, real Cook examples, local BuildPlugin and extraction scripts.
+- Twenty deterministic project fixtures, real baseline/candidate Cook examples, local BuildPlugin and extraction scripts.
 
 ## Release policy
 

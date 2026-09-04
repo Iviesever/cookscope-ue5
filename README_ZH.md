@@ -14,7 +14,7 @@ CookScope 是一个 source-only 的 Unreal Engine 5.8 Editor 插件、Commandlet
 UnrealEditor-Cmd.exe SampleProject/CookScopeSample.uproject -run=CookScopeAudit -config=Plugins/CookScope/Config/CookScopeRules.json -output=Artifacts/Reports -source-sha=<40位SHA>
 ```
 
-Sample 中的 Primary Asset 可以解释为 `DA_Primary → DA_Target` 的 Soft/Manage 路径。受控 baseline/candidate 只新增 `DA_Candidate`，真实 Development Asset Registry 测得其 Cook 大小为 **892 字节**。
+Sample 中的 Primary Asset 可以解释为 `DA_Primary → DA_Target` 的 Soft/Manage 路径。受控 baseline `66256ac` 与 candidate `f204b3b` 之间只新增 `DA_Candidate`，真实 Development Asset Registry 测得其 Cook 大小为 **892 字节**。
 
 主要入口：
 
