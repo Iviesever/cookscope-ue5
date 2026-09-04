@@ -289,7 +289,7 @@ namespace cookscope
 			ConfigError Error;
 		};
 
-		JsonValue String(std::string value)
+		JsonValue RuleJsonString(std::string value)
 		{
 			JsonValue result;
 			result.type = JsonType::String;
@@ -297,11 +297,11 @@ namespace cookscope
 			return result;
 		}
 
-		JsonValue Strings(const std::vector<std::string>& values)
+		JsonValue RuleJsonStrings(const std::vector<std::string>& values)
 		{
 			JsonValue result;
 			result.type = JsonType::Array;
-			for (const std::string& value : values) result.array.push_back(String(value));
+			for (const std::string& value : values) result.array.push_back(RuleJsonString(value));
 			return result;
 		}
 
@@ -342,22 +342,22 @@ namespace cookscope
 
 		JsonValue root;
 		root.type = JsonType::Object;
-		root.object.emplace("schema", String(config.schema));
+		root.object.emplace("schema", RuleJsonString(config.schema));
 		JsonValue ruleArray;
 		ruleArray.type = JsonType::Array;
 		for (RuleDefinition& rule : rules)
 		{
 			JsonValue value;
 			value.type = JsonType::Object;
-			value.object.emplace("id", String(rule.id));
-			value.object.emplace("name", String(rule.name));
-			value.object.emplace("description", String(rule.description));
-			value.object.emplace("severity", String(std::string(SeverityName(rule.severity))));
+			value.object.emplace("id", RuleJsonString(rule.id));
+			value.object.emplace("name", RuleJsonString(rule.name));
+			value.object.emplace("description", RuleJsonString(rule.description));
+			value.object.emplace("severity", RuleJsonString(std::string(SeverityName(rule.severity))));
 
 			JsonValue scope;
 			scope.type = JsonType::Object;
-			scope.object.emplace("include", Strings(rule.scope.include));
-			scope.object.emplace("exclude", Strings(rule.scope.exclude));
+			scope.object.emplace("include", RuleJsonStrings(rule.scope.include));
+			scope.object.emplace("exclude", RuleJsonStrings(rule.scope.exclude));
 			value.object.emplace("scope", std::move(scope));
 			value.object.emplace("parameters", rule.parameters);
 
@@ -370,14 +370,14 @@ namespace cookscope
 			{
 				JsonValue item;
 				item.type = JsonType::Object;
-				item.object.emplace("selector", String(exception.selector));
-				item.object.emplace("reason", String(exception.reason));
+				item.object.emplace("selector", RuleJsonString(exception.selector));
+				item.object.emplace("reason", RuleJsonString(exception.reason));
 				exceptions.array.push_back(std::move(item));
 			}
 			value.object.emplace("exceptions", std::move(exceptions));
-			value.object.emplace("baseline", String(std::string(BaselineName(rule.baseline))));
-			value.object.emplace("failThreshold", String(std::string(SeverityName(rule.failThreshold))));
-			value.object.emplace("helpUri", String(rule.helpUri));
+			value.object.emplace("baseline", RuleJsonString(std::string(BaselineName(rule.baseline))));
+			value.object.emplace("failThreshold", RuleJsonString(std::string(SeverityName(rule.failThreshold))));
+			value.object.emplace("helpUri", RuleJsonString(rule.helpUri));
 			ruleArray.array.push_back(std::move(value));
 		}
 		root.object.emplace("rules", std::move(ruleArray));

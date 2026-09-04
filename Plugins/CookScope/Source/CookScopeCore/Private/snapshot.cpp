@@ -374,7 +374,7 @@ namespace cookscope
 			SnapshotError Error;
 		};
 
-		JsonValue String(std::string value)
+		JsonValue SnapshotJsonString(std::string value)
 		{
 			JsonValue result;
 			result.type = JsonType::String;
@@ -382,7 +382,7 @@ namespace cookscope
 			return result;
 		}
 
-		JsonValue Number(std::uint64_t value)
+		JsonValue SnapshotJsonNumber(std::uint64_t value)
 		{
 			JsonValue result;
 			result.type = JsonType::Number;
@@ -419,8 +419,8 @@ namespace cookscope
 		{
 			JsonValue result;
 			result.type = JsonType::Object;
-			result.object.emplace("kind", String(std::string(MeasurementName(measurement.kind))));
-			if (measurement.bytes.has_value()) result.object.emplace("bytes", Number(*measurement.bytes));
+			result.object.emplace("kind", SnapshotJsonString(std::string(MeasurementName(measurement.kind))));
+			if (measurement.bytes.has_value()) result.object.emplace("bytes", SnapshotJsonNumber(*measurement.bytes));
 			return result;
 		}
 	}
@@ -434,14 +434,14 @@ namespace cookscope
 	{
 		JsonValue root;
 		root.type = JsonType::Object;
-		root.object.emplace("schema", String(snapshot.schema));
+		root.object.emplace("schema", SnapshotJsonString(snapshot.schema));
 
 		JsonValue provenance;
 		provenance.type = JsonType::Object;
-		provenance.object.emplace("engineVersion", String(snapshot.provenance.engineVersion));
-		provenance.object.emplace("platform", String(snapshot.provenance.platform));
-		provenance.object.emplace("cookConfiguration", String(snapshot.provenance.cookConfiguration));
-		provenance.object.emplace("sourceSha", String(snapshot.provenance.sourceSha));
+		provenance.object.emplace("engineVersion", SnapshotJsonString(snapshot.provenance.engineVersion));
+		provenance.object.emplace("platform", SnapshotJsonString(snapshot.provenance.platform));
+		provenance.object.emplace("cookConfiguration", SnapshotJsonString(snapshot.provenance.cookConfiguration));
+		provenance.object.emplace("sourceSha", SnapshotJsonString(snapshot.provenance.sourceSha));
 		root.object.emplace("provenance", std::move(provenance));
 
 		std::vector<AssetRecord> assets = snapshot.assets;
@@ -454,29 +454,29 @@ namespace cookscope
 		{
 			JsonValue value;
 			value.type = JsonType::Object;
-			value.object.emplace("objectPath", String(asset.objectPath));
-			value.object.emplace("packageName", String(asset.packageName));
-			value.object.emplace("assetClass", String(asset.assetClass));
-			value.object.emplace("packagePath", String(asset.packagePath));
-			value.object.emplace("primaryAssetId", asset.primaryAssetId ? String(*asset.primaryAssetId) : JsonValue{});
+			value.object.emplace("objectPath", SnapshotJsonString(asset.objectPath));
+			value.object.emplace("packageName", SnapshotJsonString(asset.packageName));
+			value.object.emplace("assetClass", SnapshotJsonString(asset.assetClass));
+			value.object.emplace("packagePath", SnapshotJsonString(asset.packagePath));
+			value.object.emplace("primaryAssetId", asset.primaryAssetId ? SnapshotJsonString(*asset.primaryAssetId) : JsonValue{});
 			value.object.emplace("diskSize", Measurement(asset.diskSize));
 			value.object.emplace("cookedSize", Measurement(asset.cookedSize));
 
 			std::sort(asset.chunkIds.begin(), asset.chunkIds.end());
 			JsonValue chunks;
 			chunks.type = JsonType::Array;
-			for (const std::int32_t chunk : asset.chunkIds) chunks.array.push_back(Number(static_cast<std::uint64_t>(chunk)));
+			for (const std::int32_t chunk : asset.chunkIds) chunks.array.push_back(SnapshotJsonNumber(static_cast<std::uint64_t>(chunk)));
 			value.object.emplace("chunkIds", std::move(chunks));
 
 			std::sort(asset.assetBundles.begin(), asset.assetBundles.end());
 			JsonValue bundles;
 			bundles.type = JsonType::Array;
-			for (const std::string& bundle : asset.assetBundles) bundles.array.push_back(String(bundle));
+			for (const std::string& bundle : asset.assetBundles) bundles.array.push_back(SnapshotJsonString(bundle));
 			value.object.emplace("assetBundles", std::move(bundles));
 
 			JsonValue tags;
 			tags.type = JsonType::Object;
-			for (const auto& [key, tagValue] : asset.tags) tags.object.emplace(key, String(tagValue));
+			for (const auto& [key, tagValue] : asset.tags) tags.object.emplace(key, SnapshotJsonString(tagValue));
 			value.object.emplace("tags", std::move(tags));
 
 			std::sort(asset.dependencies.begin(), asset.dependencies.end(), [](const DependencyEdge& left, const DependencyEdge& right) {
@@ -488,12 +488,12 @@ namespace cookscope
 			{
 				JsonValue dependency;
 				dependency.type = JsonType::Object;
-				dependency.object.emplace("target", String(edge.target));
-				dependency.object.emplace("kind", String(std::string(DependencyName(edge.kind))));
+				dependency.object.emplace("target", SnapshotJsonString(edge.target));
+				dependency.object.emplace("kind", SnapshotJsonString(std::string(DependencyName(edge.kind))));
 				dependencies.array.push_back(std::move(dependency));
 			}
 			value.object.emplace("dependencies", std::move(dependencies));
-			value.object.emplace("sourceProvenance", String(asset.sourceProvenance));
+			value.object.emplace("sourceProvenance", SnapshotJsonString(asset.sourceProvenance));
 			assetArray.array.push_back(std::move(value));
 		}
 		root.object.emplace("assets", std::move(assetArray));

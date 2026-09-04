@@ -12,7 +12,7 @@
 
 namespace cookscope
 {
-	class DependencyMask
+	class COOKSCOPECORE_API DependencyMask
 	{
 	public:
 		static DependencyMask All() noexcept;
