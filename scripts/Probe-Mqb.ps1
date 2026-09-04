@@ -24,6 +24,11 @@ if (Test-Path -LiteralPath $cachePath) {
 
 Push-Location $repositoryRoot
 try {
+  $sourceSha = (& git rev-parse HEAD).Trim()
+  if ($LASTEXITCODE -ne 0 -or $sourceSha -notmatch '^[0-9a-f]{40}$') {
+    throw 'Unable to resolve the source Git SHA for MQB evidence'
+  }
+
   $cleanLog = Join-Path $evidenceRoot 'clean-build.log'
   & $mqb.Source build --profile $Configuration.ToLowerInvariant() --timings=json 2>&1 | Tee-Object -FilePath $cleanLog
   $cleanExitCode = $LASTEXITCODE
@@ -60,11 +65,13 @@ try {
   $artifactInfo = Get-Item -LiteralPath $artifact
   $summary = [ordered]@{
     schema = 'cookscope.mqb-probe/1'
+    sourceSha = $sourceSha
     configuration = $Configuration.ToLowerInvariant()
     cleanExitCode = $cleanExitCode
     noOpExitCode = $noOpExitCode
     expectedFailureExitCode = $failureExitCode
     artifact = $artifact
+    artifactRelativePath = '.mqb/bin/CookScopeCli.exe'
     artifactBytes = $artifactInfo.Length
     artifactSha256 = $cleanHash
     cleanLog = $cleanLog
