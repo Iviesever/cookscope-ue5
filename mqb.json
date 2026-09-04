@@ -32,7 +32,8 @@
     ],
     "extra_sources": [
       "Plugins/CookScope/Source/CookScopeCore/Private/arguments.cpp",
-      "Plugins/CookScope/Source/CookScopeCore/Private/bootstrap.cpp"
+      "Plugins/CookScope/Source/CookScopeCore/Private/bootstrap.cpp",
+      "Plugins/CookScope/Source/CookScopeCore/Private/json.cpp"
     ]
   },
   "profiles": {

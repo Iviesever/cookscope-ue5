@@ -15,11 +15,18 @@
 ## Current PACT slice
 
 ```text
-Objective: Establish the local main contract baseline, then begin PACT-00 on feat/cookscope-0.1.
-Gap: No source baseline commit, plugin, sample, test, build, Editor load, or commandlet exists yet.
-Scope: Planning/evidence files first; then the smallest MQB and UE smoke RED tests.
-Done when: PACT-00 has a reproducible MQB core/helper build, real UE plugin load, Editor tab, commandlet JSON, stable exit-code evidence, and a bounded MQB/UE capability matrix.
+Objective: Implement PACT-10 strict versioned data foundations under MQB while the unrelated UE pipeline owns the UBT mutex.
+Gap: Only bootstrap JSON exists; no strict reusable JSON syntax layer, snapshot model, or rule model exists yet.
+Scope: Generic strict JSON first, then rule and snapshot domain validation/canonicalization through separate RED/GREEN slices.
+Done when: malformed/duplicate/unknown data fails closed and equivalent valid rule/snapshot inputs produce byte-identical canonical output.
 ```
+
+## 2026-09-05 — PACT-10 strict JSON syntax layer
+
+- RED: `mqb run Tests/Core/JsonContractTests.cpp --no-discover -I Plugins/CookScope/Source/CookScopeCore/Public --std 20 --release -o CookScopeJsonContractTests` exited `1` with C1083 because `cookscope/json.h` did not exist.
+- GREEN: the test plus `Private/json.cpp` exited `0` and printed `PASS: strict JSON parser and canonical writer contract`.
+- Proven syntax behavior: object keys canonicalize in UTF-8 byte order; duplicate keys fail at stable JSON paths; trailing content fails; raw UTF-8 is validated/preserved; escaped UTF-16 requires paired surrogates; controls and escapes serialize deterministically; recursion is bounded at 128 by default.
+- `scripts/Test.ps1` now runs three Core tests plus the process CLI. Fresh result: exit `0`; all tests passed, MQB discovered exactly four production translation units, and no UE adapter/package source entered the MQB target.
 
 ## 2026-09-05 — Local baseline and PACT-00 core contract
 
@@ -78,7 +85,7 @@ Done when: PACT-00 has a reproducible MQB core/helper build, real UE plugin load
 
 ## Next actions
 
-1. Commit the PACT-00 UE source and scripts after final diff/generated-file checks.
-2. On the clean commit, rerun MQB probe, Core/CLI suite, UE suite, and source-bound BuildPlugin.
-3. Verify local package identity and a fresh-host loading smoke before updating acceptance statuses.
-4. Begin PACT-10 with strict model/JSON RED tests.
+1. Commit the strict JSON syntax slice after diff checks.
+2. Add RED tests for strict Rule Config domain parsing, duplicate Rule IDs, unknown fields, thresholds, and canonical order.
+3. Add RED tests for the complete versioned Asset Snapshot envelope and deterministic dependency ordering.
+4. Recheck the external UBT mutex owner before retrying source-bound BuildPlugin.
