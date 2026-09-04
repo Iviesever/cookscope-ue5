@@ -6,6 +6,8 @@
 #include <cstdint>
 #include <functional>
 #include <limits>
+#include <map>
+#include <set>
 #include <utility>
 
 namespace cookscope
@@ -584,6 +586,248 @@ namespace cookscope
 				}
 			}
 		}
+
+		bool ReadStringParameter(const RuleDefinition& rule, std::string_view name, std::string& output)
+		{
+			const JsonValue* value = Parameter(rule, name);
+			if (!value || value->type != JsonType::String || value->scalar.empty()) return false;
+			output = value->scalar;
+			return true;
+		}
+
+		Finding SimpleFinding(const RuleDefinition& rule, const AssetRecord& asset, std::string message)
+		{
+			Finding finding;
+			finding.ruleId = rule.id;
+			finding.assetPath = asset.objectPath;
+			finding.severity = rule.severity;
+			finding.message = std::move(message);
+			return finding;
+		}
+
+		bool IsActuallyCooked(const AssetRecord& asset)
+		{
+			return asset.cookedSize.kind == MeasurementKind::ActualCooked && asset.cookedSize.bytes.has_value();
+		}
+
+		void EvaluatePrimaryRequired(const Snapshot& snapshot, const RuleDefinition& rule, AnalysisResult& result)
+		{
+			for (const AssetRecord& asset : snapshot.assets)
+			{
+				if (MatchesScope(rule, asset.objectPath) && !asset.primaryAssetId.has_value())
+				{
+					result.findings.push_back(SimpleFinding(rule, asset, "asset is missing required Primary Asset configuration"));
+				}
+			}
+		}
+
+		void EvaluateBundleRequired(const Snapshot& snapshot, const RuleDefinition& rule, AnalysisResult& result)
+		{
+			std::string required;
+			if (!ReadStringParameter(rule, "bundle", required))
+			{
+				AddParameterDiagnostic(result, rule, "bundle-required needs a non-empty bundle name");
+				return;
+			}
+			for (const AssetRecord& asset : snapshot.assets)
+			{
+				if (MatchesScope(rule, asset.objectPath) &&
+					std::find(asset.assetBundles.begin(), asset.assetBundles.end(), required) == asset.assetBundles.end())
+				{
+					Finding finding = SimpleFinding(rule, asset, "required Asset Bundle is missing");
+					finding.expectedText = required;
+					result.findings.push_back(std::move(finding));
+				}
+			}
+		}
+
+		void EvaluatePrimaryType(const Snapshot& snapshot, const RuleDefinition& rule, AnalysisResult& result)
+		{
+			std::string expected;
+			if (!ReadStringParameter(rule, "expectedType", expected))
+			{
+				AddParameterDiagnostic(result, rule, "primary-type needs expectedType");
+				return;
+			}
+			for (const AssetRecord& asset : snapshot.assets)
+			{
+				if (!MatchesScope(rule, asset.objectPath) || !asset.primaryAssetId) continue;
+				const std::size_t colon = asset.primaryAssetId->find(':');
+				const std::string actual = asset.primaryAssetId->substr(0, colon);
+				if (actual != expected)
+				{
+					Finding finding = SimpleFinding(rule, asset, "Primary Asset type does not match expected type");
+					finding.observedText = actual;
+					finding.expectedText = expected;
+					result.findings.push_back(std::move(finding));
+				}
+			}
+		}
+
+		void EvaluateChunkConflict(const Snapshot& snapshot, const RuleDefinition& rule, AnalysisResult& result)
+		{
+			std::uint64_t maximum = 0;
+			if (!ReadUnsignedParameter(rule, "maxChunks", maximum))
+			{
+				AddParameterDiagnostic(result, rule, "chunk-conflict needs maxChunks");
+				return;
+			}
+			for (const AssetRecord& asset : snapshot.assets)
+			{
+				if (MatchesScope(rule, asset.objectPath) && asset.chunkIds.size() > maximum)
+				{
+					Finding finding = SimpleFinding(rule, asset, "asset belongs to too many Chunks");
+					finding.metric = "chunk-count";
+					finding.observedValue = asset.chunkIds.size();
+					finding.limitValue = maximum;
+					result.findings.push_back(std::move(finding));
+				}
+			}
+		}
+
+		void EvaluateChunkRequired(const Snapshot& snapshot, const RuleDefinition& rule, AnalysisResult& result)
+		{
+			std::uint64_t required = 0;
+			if (!ReadUnsignedParameter(rule, "chunkId", required) || required > static_cast<std::uint64_t>(std::numeric_limits<std::int32_t>::max()))
+			{
+				AddParameterDiagnostic(result, rule, "chunk-required needs a non-negative 32-bit chunkId");
+				return;
+			}
+			for (const AssetRecord& asset : snapshot.assets)
+			{
+				if (!MatchesScope(rule, asset.objectPath)) continue;
+				const std::int32_t requiredChunk = static_cast<std::int32_t>(required);
+				if (std::find(asset.chunkIds.begin(), asset.chunkIds.end(), requiredChunk) == asset.chunkIds.end())
+				{
+					Finding finding = SimpleFinding(rule, asset, "required Chunk assignment is missing");
+					finding.metric = "required-chunk";
+					finding.expectedText = std::to_string(required);
+					result.findings.push_back(std::move(finding));
+				}
+			}
+		}
+
+		void EvaluateUnexpectedCook(const Snapshot& snapshot, const RuleDefinition& rule, AnalysisResult& result)
+		{
+			std::vector<std::string> allowed;
+			if (!ReadStringArrayParameter(rule, "allowedPatterns", allowed))
+			{
+				AddParameterDiagnostic(result, rule, "cook.unexpected needs allowedPatterns");
+				return;
+			}
+			for (const AssetRecord& asset : snapshot.assets)
+			{
+				if (MatchesScope(rule, asset.objectPath) && IsActuallyCooked(asset) && !MatchesAny(allowed, asset.objectPath))
+				{
+					Finding finding = SimpleFinding(rule, asset, "asset was cooked outside the allowed set");
+					finding.measurementKind = MeasurementKind::ActualCooked;
+					finding.observedBytes = asset.cookedSize.bytes;
+					result.findings.push_back(std::move(finding));
+				}
+			}
+		}
+
+		void EvaluateMissingCook(const Snapshot& snapshot, const RuleDefinition& rule, AnalysisResult& result)
+		{
+			std::vector<std::string> expected;
+			if (!ReadStringArrayParameter(rule, "expectedPatterns", expected))
+			{
+				AddParameterDiagnostic(result, rule, "cook.missing needs expectedPatterns");
+				return;
+			}
+			for (const AssetRecord& asset : snapshot.assets)
+			{
+				if (MatchesScope(rule, asset.objectPath) && MatchesAny(expected, asset.objectPath) && !IsActuallyCooked(asset))
+				{
+					result.findings.push_back(SimpleFinding(rule, asset, "expected asset is absent from actual Cook data"));
+				}
+			}
+		}
+
+		void EvaluateEditorLeak(const Snapshot& snapshot, const RuleDefinition& rule, AnalysisResult& result)
+		{
+			std::vector<std::string> editorPatterns;
+			if (!ReadStringArrayParameter(rule, "editorPatterns", editorPatterns))
+			{
+				AddParameterDiagnostic(result, rule, "editor-only leak rule needs editorPatterns");
+				return;
+			}
+			for (const AssetRecord& asset : snapshot.assets)
+			{
+				if (MatchesScope(rule, asset.objectPath) && MatchesAny(editorPatterns, asset.objectPath) && IsActuallyCooked(asset))
+				{
+					Finding finding = SimpleFinding(rule, asset, "editor-only asset leaked into actual Cook output");
+					finding.measurementKind = MeasurementKind::ActualCooked;
+					finding.observedBytes = asset.cookedSize.bytes;
+					result.findings.push_back(std::move(finding));
+				}
+			}
+		}
+
+		void EvaluateCookRuleConflict(const Snapshot& snapshot, const RuleDefinition& rule, AnalysisResult& result)
+		{
+			for (const AssetRecord& asset : snapshot.assets)
+			{
+				if (!MatchesScope(rule, asset.objectPath)) continue;
+				const auto always = asset.tags.find("AlwaysCook");
+				const auto never = asset.tags.find("NeverCook");
+				if (always != asset.tags.end() && never != asset.tags.end() && always->second == "true" && never->second == "true")
+				{
+					result.findings.push_back(SimpleFinding(rule, asset, "AlwaysCook and NeverCook are both active"));
+				}
+			}
+		}
+
+		void EvaluateRedirector(const Snapshot& snapshot, const RuleDefinition& rule, AnalysisResult& result)
+		{
+			for (const AssetRecord& asset : snapshot.assets)
+			{
+				if (MatchesScope(rule, asset.objectPath) && asset.assetClass == "/Script/CoreUObject.ObjectRedirector")
+				{
+					result.findings.push_back(SimpleFinding(rule, asset, "asset is a redirector"));
+				}
+			}
+		}
+
+		void EvaluateMissingReferences(const Snapshot& snapshot, const RuleDefinition& rule, AnalysisResult& result)
+		{
+			std::set<std::string, std::less<>> assets;
+			for (const AssetRecord& asset : snapshot.assets) assets.insert(asset.objectPath);
+			for (const AssetRecord& asset : snapshot.assets)
+			{
+				if (!MatchesScope(rule, asset.objectPath)) continue;
+				for (const DependencyEdge& edge : asset.dependencies)
+				{
+					if (assets.contains(edge.target)) continue;
+					result.findings.push_back(DependencyFinding(
+						rule,
+						{asset.objectPath, edge.target, edge.kind},
+						"dependency target is unresolved"));
+				}
+			}
+		}
+
+		void EvaluateAmbiguousNames(const Snapshot& snapshot, const RuleDefinition& rule, AnalysisResult& result)
+		{
+			std::map<std::string, std::vector<std::string>, std::less<>> byName;
+			for (const AssetRecord& asset : snapshot.assets)
+			{
+				if (MatchesScope(rule, asset.objectPath)) byName[std::string(AssetName(asset.objectPath))].push_back(asset.objectPath);
+			}
+			for (auto& [name, paths] : byName)
+			{
+				(void)name;
+				if (paths.size() < 2) continue;
+				std::sort(paths.begin(), paths.end());
+				Finding finding;
+				finding.ruleId = rule.id;
+				finding.assetPath = paths[0];
+				finding.relatedAsset = paths[1];
+				finding.severity = rule.severity;
+				finding.message = "asset name is ambiguous across paths";
+				result.findings.push_back(std::move(finding));
+			}
+		}
 	}
 
 	bool GlobMatches(std::string_view pattern, std::string_view value)
@@ -638,6 +882,18 @@ namespace cookscope
 			else if (rule.id == "resource.static-mesh") EvaluateStaticMesh(snapshot, rule, result);
 			else if (rule.id == "resource.skeletal-mesh") EvaluateSkeletalMesh(snapshot, rule, result);
 			else if (rule.id == "resource.sound") EvaluateSound(snapshot, rule, result);
+			else if (rule.id == "asset-manager.primary-required") EvaluatePrimaryRequired(snapshot, rule, result);
+			else if (rule.id == "asset-manager.bundle-required") EvaluateBundleRequired(snapshot, rule, result);
+			else if (rule.id == "asset-manager.primary-type") EvaluatePrimaryType(snapshot, rule, result);
+			else if (rule.id == "asset-manager.chunk-conflict") EvaluateChunkConflict(snapshot, rule, result);
+			else if (rule.id == "asset-manager.chunk-required") EvaluateChunkRequired(snapshot, rule, result);
+			else if (rule.id == "cook.unexpected") EvaluateUnexpectedCook(snapshot, rule, result);
+			else if (rule.id == "cook.missing") EvaluateMissingCook(snapshot, rule, result);
+			else if (rule.id == "cook.editor-only-leak") EvaluateEditorLeak(snapshot, rule, result);
+			else if (rule.id == "cook.rule-conflict") EvaluateCookRuleConflict(snapshot, rule, result);
+			else if (rule.id == "redirector.present") EvaluateRedirector(snapshot, rule, result);
+			else if (rule.id == "reference.missing") EvaluateMissingReferences(snapshot, rule, result);
+			else if (rule.id == "naming.ambiguous") EvaluateAmbiguousNames(snapshot, rule, result);
 			else if (rule.id.starts_with("budget.")) EvaluateBudget(snapshot, rule, result);
 			else result.diagnostics.push_back({rule.id, {}, AnalysisDiagnosticCode::UnsupportedRule, "rule is not implemented"});
 		}

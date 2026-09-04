@@ -47,6 +47,13 @@ Done when: every P0 rule family has positive/negative fixtures, stable findings,
 - Missing or malformed resource tags produce `MeasurementUnavailable` diagnostics rather than zero-valued violations.
 - Fresh `scripts/Test.ps1`: exit `0`; all Core/file/rule/CLI tests passed, including the new resource target; MQB production discovery remains eight translation units.
 
+## 2026-09-05 — PACT-30 Asset Manager and Cook rule family
+
+- RED: `AssetManagerCookRuleContractTests` built and ran, then failed because all twelve new Rule IDs were still reported as unsupported diagnostics.
+- GREEN: Primary required/type, required Bundle, Chunk conflict/required, unexpected Cook, missing expected Cook, Editor-only Cook leak, AlwaysCook/NeverCook conflict, redirector, unresolved reference, and ambiguous naming each produced one isolated finding with zero diagnostics.
+- Missing-reference findings retain unresolved target and dependency kind. Ambiguous-name findings choose the lexicographically first and related paths. Cook findings only treat `ActualCooked` measurements as proof of inclusion.
+- Fresh full MQB suite exited `0`; all Core/file/rule/CLI tests passed. UE Editor Development then compiled and linked the expanded shared rules into CookScopeCore and exited `0`.
+
 ## 2026-09-05 — PACT-20 deterministic typed graph core
 
 - RED: `mqb run Tests/Core/GraphContractTests.cpp --no-discover -I Plugins/CookScope/Source/CookScopeCore/Public --std 20 --profile release -o CookScopeGraphContractTests` exited `1` with C1083 because `cookscope/graph.h` did not exist.
