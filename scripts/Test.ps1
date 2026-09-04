@@ -68,9 +68,18 @@ try {
   Invoke-MqbTest -Sources @(
     'Tests/Core/RuleEngineContractTests.cpp',
     "$privateCore/rules.cpp",
+    "$privateCore/graph.cpp",
     "$privateCore/rule_config.cpp",
     "$privateCore/json.cpp"
   ) -Output 'CookScopeRuleEngineContractTests'
+
+  Invoke-MqbTest -Sources @(
+    'Tests/Core/DependencyRuleContractTests.cpp',
+    "$privateCore/rules.cpp",
+    "$privateCore/graph.cpp",
+    "$privateCore/rule_config.cpp",
+    "$privateCore/json.cpp"
+  ) -Output 'CookScopeDependencyRuleContractTests'
 
   & (Join-Path $PSScriptRoot 'Build.ps1') -Configuration $Configuration
   & (Join-Path $PSScriptRoot '..\Tests\CLI\BootstrapCliContract.ps1') -Executable '.mqb/bin/CookScopeCli.exe'

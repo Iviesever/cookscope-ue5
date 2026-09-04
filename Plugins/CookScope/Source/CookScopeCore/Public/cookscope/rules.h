@@ -1,5 +1,6 @@
 #pragma once
 
+#include "cookscope/graph.h"
 #include "cookscope/rule_config.h"
 #include "cookscope/snapshot.h"
 
@@ -20,6 +21,9 @@ namespace cookscope
 		MeasurementKind measurementKind = MeasurementKind::Unavailable;
 		std::optional<std::uint64_t> observedBytes;
 		std::optional<std::uint64_t> budgetBytes;
+		std::string relatedAsset;
+		std::optional<DependencyKind> dependencyKind;
+		std::vector<DependencyStep> dependencyPath;
 	};
 
 	enum class AnalysisDiagnosticCode : std::uint8_t
@@ -46,4 +50,3 @@ namespace cookscope
 	[[nodiscard]] COOKSCOPECORE_API bool GlobMatches(std::string_view pattern, std::string_view value);
 	[[nodiscard]] COOKSCOPECORE_API AnalysisResult Evaluate(const Snapshot& snapshot, const RuleConfig& config);
 }
-

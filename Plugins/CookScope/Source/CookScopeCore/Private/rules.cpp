@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <limits>
 #include <utility>
 
 namespace cookscope
@@ -180,6 +181,233 @@ namespace cookscope
 				}
 			}
 		}
+
+		bool ReadUnsignedParameter(const RuleDefinition& rule, std::string_view name, std::uint64_t& output)
+		{
+			const JsonValue* value = Parameter(rule, name);
+			if (!value || value->type != JsonType::Number) return false;
+			const auto parsed = std::from_chars(value->scalar.data(), value->scalar.data() + value->scalar.size(), output);
+			return parsed.ec == std::errc{} && parsed.ptr == value->scalar.data() + value->scalar.size();
+		}
+
+		bool ReadStringArrayParameter(const RuleDefinition& rule, std::string_view name, std::vector<std::string>& output)
+		{
+			const JsonValue* value = Parameter(rule, name);
+			if (!value || value->type != JsonType::Array) return false;
+			for (const JsonValue& item : value->array)
+			{
+				if (item.type != JsonType::String || item.scalar.empty()) return false;
+				output.push_back(item.scalar);
+			}
+			return !output.empty();
+		}
+
+		bool MatchesAny(const std::vector<std::string>& patterns, std::string_view value)
+		{
+			return std::any_of(patterns.begin(), patterns.end(), [&](const std::string& pattern) {
+				return GlobMatches(pattern, value);
+			});
+		}
+
+		bool ParseDependencyKind(std::string_view name, DependencyKind& output)
+		{
+			if (name == "hard") output = DependencyKind::Hard;
+			else if (name == "soft") output = DependencyKind::Soft;
+			else if (name == "manage") output = DependencyKind::Manage;
+			else if (name == "searchable-name") output = DependencyKind::SearchableName;
+			else return false;
+			return true;
+		}
+
+		Finding DependencyFinding(
+			const RuleDefinition& rule,
+			const DependencyStep& edge,
+			std::string message)
+		{
+			Finding finding;
+			finding.ruleId = rule.id;
+			finding.assetPath = edge.source;
+			finding.severity = rule.severity;
+			finding.message = std::move(message);
+			finding.relatedAsset = edge.target;
+			finding.dependencyKind = edge.kind;
+			finding.dependencyPath.push_back(edge);
+			return finding;
+		}
+
+		void EvaluateForbiddenDependency(const Snapshot& snapshot, const RuleDefinition& rule, AnalysisResult& result)
+		{
+			std::vector<std::string> fromPatterns;
+			std::vector<std::string> toPatterns;
+			std::vector<std::string> kindNames;
+			if (!ReadStringArrayParameter(rule, "from", fromPatterns) ||
+				!ReadStringArrayParameter(rule, "to", toPatterns) ||
+				!ReadStringArrayParameter(rule, "kinds", kindNames))
+			{
+				AddParameterDiagnostic(result, rule, "forbidden dependency requires non-empty from, to, and kinds arrays");
+				return;
+			}
+			std::vector<DependencyKind> kinds;
+			for (const std::string& name : kindNames)
+			{
+				DependencyKind kind = DependencyKind::Hard;
+				if (!ParseDependencyKind(name, kind))
+				{
+					AddParameterDiagnostic(result, rule, "unknown dependency kind");
+					return;
+				}
+				kinds.push_back(kind);
+			}
+			for (const AssetRecord& asset : snapshot.assets)
+			{
+				if (!MatchesScope(rule, asset.objectPath) || !MatchesAny(fromPatterns, asset.objectPath)) continue;
+				for (const DependencyEdge& edge : asset.dependencies)
+				{
+					if (MatchesAny(toPatterns, edge.target) && std::find(kinds.begin(), kinds.end(), edge.kind) != kinds.end())
+					{
+						result.findings.push_back(DependencyFinding(
+							rule,
+							{asset.objectPath, edge.target, edge.kind},
+							"forbidden dependency boundary crossed"));
+					}
+				}
+			}
+		}
+
+		void EvaluateRuntimeToEditor(const Snapshot& snapshot, const RuleDefinition& rule, AnalysisResult& result)
+		{
+			std::vector<std::string> runtimePatterns;
+			std::vector<std::string> editorPatterns;
+			if (!ReadStringArrayParameter(rule, "runtimePatterns", runtimePatterns) ||
+				!ReadStringArrayParameter(rule, "editorPatterns", editorPatterns))
+			{
+				AddParameterDiagnostic(result, rule, "runtime-to-editor requires runtimePatterns and editorPatterns");
+				return;
+			}
+			for (const AssetRecord& asset : snapshot.assets)
+			{
+				if (!MatchesScope(rule, asset.objectPath) || !MatchesAny(runtimePatterns, asset.objectPath)) continue;
+				for (const DependencyEdge& edge : asset.dependencies)
+				{
+					if (MatchesAny(editorPatterns, edge.target))
+					{
+						result.findings.push_back(DependencyFinding(
+							rule,
+							{asset.objectPath, edge.target, edge.kind},
+							"runtime asset depends on editor-only content"));
+					}
+				}
+			}
+		}
+
+		void EvaluateCycles(const Snapshot& snapshot, const RuleDefinition& rule, AnalysisResult& result)
+		{
+			const GraphBuildResult graph = BuildDependencyGraph(snapshot, OperationLimits{});
+			if (graph.state != OperationState::Complete)
+			{
+				AddParameterDiagnostic(result, rule, "dependency graph could not be built within limits");
+				return;
+			}
+			const CyclesResult cycles = FindCycles(graph.graph, DependencyMask::All(), OperationLimits{});
+			if (cycles.state != OperationState::Complete)
+			{
+				AddParameterDiagnostic(result, rule, "cycle detection was truncated");
+				return;
+			}
+			for (const Cycle& cycle : cycles.cycles)
+			{
+				if (cycle.nodes.empty() || !MatchesScope(rule, cycle.nodes.front())) continue;
+				Finding finding;
+				finding.ruleId = rule.id;
+				finding.assetPath = cycle.nodes.front();
+				finding.relatedAsset = cycle.nodes.back();
+				finding.severity = rule.severity;
+				finding.message = "dependency cycle contains " + std::to_string(cycle.nodes.size()) + " assets";
+				result.findings.push_back(std::move(finding));
+			}
+		}
+
+		void EvaluateFanOut(const Snapshot& snapshot, const RuleDefinition& rule, AnalysisResult& result)
+		{
+			std::uint64_t maximum = 0;
+			if (!ReadUnsignedParameter(rule, "maxFanOut", maximum))
+			{
+				AddParameterDiagnostic(result, rule, "maxFanOut must be an unsigned integer");
+				return;
+			}
+			for (const AssetRecord& asset : snapshot.assets)
+			{
+				if (!MatchesScope(rule, asset.objectPath) || asset.dependencies.size() <= maximum) continue;
+				Finding finding;
+				finding.ruleId = rule.id;
+				finding.assetPath = asset.objectPath;
+				finding.severity = rule.severity;
+				finding.message = "direct dependency fan-out exceeds " + std::to_string(maximum);
+				result.findings.push_back(std::move(finding));
+			}
+		}
+
+		std::vector<DependencyStep> FindDepthViolation(
+			const DependencyGraph& graph,
+			std::size_t source,
+			std::size_t maximumDepth)
+		{
+			std::vector<bool> inPath(graph.nodes.size(), false);
+			std::vector<DependencyStep> path;
+			std::vector<DependencyStep> found;
+			std::function<bool(std::size_t)> visit = [&](std::size_t node) {
+				if (path.size() > maximumDepth)
+				{
+					found = path;
+					return true;
+				}
+				inPath[node] = true;
+				for (const GraphArc& edge : graph.outgoing[node])
+				{
+					if (inPath[edge.node]) continue;
+					path.push_back({graph.nodes[node], graph.nodes[edge.node], edge.kind});
+					if (visit(edge.node)) return true;
+					path.pop_back();
+				}
+				inPath[node] = false;
+				return false;
+			};
+			visit(source);
+			return found;
+		}
+
+		void EvaluateDepth(const Snapshot& snapshot, const RuleDefinition& rule, AnalysisResult& result)
+		{
+			std::uint64_t maximum = 0;
+			if (!ReadUnsignedParameter(rule, "maxDepth", maximum) || maximum > static_cast<std::uint64_t>(std::numeric_limits<std::size_t>::max()))
+			{
+				AddParameterDiagnostic(result, rule, "maxDepth must fit in size_t");
+				return;
+			}
+			const GraphBuildResult graph = BuildDependencyGraph(snapshot, OperationLimits{});
+			if (graph.state != OperationState::Complete)
+			{
+				AddParameterDiagnostic(result, rule, "dependency graph could not be built within limits");
+				return;
+			}
+			for (const AssetRecord& asset : snapshot.assets)
+			{
+				if (!MatchesScope(rule, asset.objectPath)) continue;
+				const auto node = graph.graph.nodeIndices.find(asset.objectPath);
+				if (node == graph.graph.nodeIndices.end()) continue;
+				std::vector<DependencyStep> path = FindDepthViolation(graph.graph, node->second, static_cast<std::size_t>(maximum));
+				if (path.empty()) continue;
+				Finding finding;
+				finding.ruleId = rule.id;
+				finding.assetPath = asset.objectPath;
+				finding.relatedAsset = path.back().target;
+				finding.dependencyKind = path.front().kind;
+				finding.dependencyPath = std::move(path);
+				finding.severity = rule.severity;
+				finding.message = "dependency depth exceeds " + std::to_string(maximum);
+				result.findings.push_back(std::move(finding));
+			}
+		}
 	}
 
 	bool GlobMatches(std::string_view pattern, std::string_view value)
@@ -225,6 +453,11 @@ namespace cookscope
 		{
 			if (rule.id == "naming.asset-prefix") EvaluatePrefix(snapshot, rule, result);
 			else if (rule.id == "path.forbidden") EvaluateForbiddenPath(snapshot, rule, result);
+			else if (rule.id == "dependency.forbidden") EvaluateForbiddenDependency(snapshot, rule, result);
+			else if (rule.id == "dependency.runtime-to-editor") EvaluateRuntimeToEditor(snapshot, rule, result);
+			else if (rule.id == "dependency.cycle") EvaluateCycles(snapshot, rule, result);
+			else if (rule.id == "dependency.max-fanout") EvaluateFanOut(snapshot, rule, result);
+			else if (rule.id == "dependency.max-depth") EvaluateDepth(snapshot, rule, result);
 			else if (rule.id.starts_with("budget.")) EvaluateBudget(snapshot, rule, result);
 			else result.diagnostics.push_back({rule.id, {}, AnalysisDiagnosticCode::UnsupportedRule, "rule is not implemented"});
 		}

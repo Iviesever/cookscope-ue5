@@ -30,6 +30,15 @@ Done when: every P0 rule family has positive/negative fixtures, stable findings,
 - Findings and diagnostics sort by Rule ID, Asset Path, then message. Unsupported/invalid parameter diagnostics are explicit.
 - Fresh `scripts/Test.ps1`: exit `0`; eight Core/file test targets plus process CLI passed; MQB discovered exactly eight production translation units.
 
+## 2026-09-05 — PACT-30 dependency rule family
+
+- RED: `DependencyRuleContractTests` failed compilation because shared Finding lacked related asset, typed dependency kind, and dependency path evidence fields.
+- GREEN: forbidden boundary, Runtime-to-Editor, cycle, maximum fan-out, and maximum depth produced five stable findings with zero diagnostics.
+- Forbidden-edge finding retains source, related target, Hard kind, and one-step evidence. Maximum-depth finding retains the deterministic Soft -> Hard two-step violating path.
+- The first full suite after implementation failed only because the pre-existing RuleEngine test target's exact source set had not added `graph.cpp`; its three unresolved graph symbols were corrected by updating the build target, not implementation code.
+- Repeated `scripts/Test.ps1`: exit `0`; all rule/graph/core/file/CLI tests passed with exactly eight MQB production translation units.
+- UE Editor Development build then compiled and linked `rules.cpp` into CookScopeCore successfully, covering the UBT Unity/DLL path before commit.
+
 ## 2026-09-05 — PACT-20 deterministic typed graph core
 
 - RED: `mqb run Tests/Core/GraphContractTests.cpp --no-discover -I Plugins/CookScope/Source/CookScopeCore/Public --std 20 --profile release -o CookScopeGraphContractTests` exited `1` with C1083 because `cookscope/graph.h` did not exist.
