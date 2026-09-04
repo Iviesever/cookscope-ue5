@@ -15,11 +15,20 @@
 ## Current PACT slice
 
 ```text
-Objective: Implement PACT-10 strict versioned data foundations under MQB while the unrelated UE pipeline owns the UBT mutex.
-Gap: Only bootstrap JSON exists; no strict reusable JSON syntax layer, snapshot model, or rule model exists yet.
-Scope: Generic strict JSON first, then rule and snapshot domain validation/canonicalization through separate RED/GREEN slices.
-Done when: malformed/duplicate/unknown data fails closed and equivalent valid rule/snapshot inputs produce byte-identical canonical output.
+Objective: Implement PACT-20 deterministic typed graph behavior before binding it to real UE Asset Registry data.
+Gap: Snapshots carry typed edges, but no graph index, traversal, reverse-reference, path, cycle, unresolved-target, or limit behavior existed.
+Scope: Pure Core graph algorithms under MQB; UE scanning remains a separate RED/GREEN slice.
+Done when: stable direct/reverse/path/cycle queries pass bounded tests and the UE adapter produces the same edge kinds from a real registry scan.
 ```
+
+## 2026-09-05 — PACT-20 deterministic typed graph core
+
+- RED: `mqb run Tests/Core/GraphContractTests.cpp --no-discover -I Plugins/CookScope/Source/CookScopeCore/Public --std 20 --profile release -o CookScopeGraphContractTests` exited `1` with C1083 because `cookscope/graph.h` did not exist.
+- GREEN: the test with `Private/graph.cpp` exited `0` and printed `PASS: deterministic typed dependency graph contract`.
+- Proven behavior: stable sorted node/adjacency indexes; typed direct dependencies and reverse referencers; edge masks; deterministic BFS shortest path; bounded simple all-path traversal; Tarjan strongly connected components; explicit unresolved targets.
+- Build node/edge overrun returns `Failed`; traversal depth/node/edge/path incompleteness returns `Truncated`. No truncated result is labeled complete.
+- Hard-only path tests prove traversal does not silently cross a Manage edge. Hard, Soft, Manage, and Searchable Name remain distinct enum values and sort order.
+- Fresh `scripts/Test.ps1`: exit `0`; seven Core/file tests plus process CLI passed; MQB discovered exactly seven production translation units.
 
 ## 2026-09-05 — PACT-10 strict JSON syntax layer
 
@@ -111,7 +120,7 @@ Done when: malformed/duplicate/unknown data fails closed and equivalent valid ru
 
 ## Next actions
 
-1. Commit the strict JSON syntax slice after diff checks.
-2. Add RED tests for strict Rule Config domain parsing, duplicate Rule IDs, unknown fields, thresholds, and canonical order.
-3. Add RED tests for the complete versioned Asset Snapshot envelope and deterministic dependency ordering.
-4. Recheck the external UBT mutex owner before retrying source-bound BuildPlugin.
+1. Commit the deterministic graph slice after diff checks.
+2. Add a why-cooked multi-root explanation RED test with stable root selection and limit metadata.
+3. Create deterministic UE fixture assets, then add real Asset Registry/Asset Manager scan tests for all supported edge kinds.
+4. Recheck the external UBT mutex owner before UE build or source-bound BuildPlugin retry.

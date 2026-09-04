@@ -60,6 +60,11 @@ try {
     "$privateCore/snapshot.cpp"
   ) -Output 'CookScopeSchemaArtifactsContractTests'
 
+  Invoke-MqbTest -Sources @(
+    'Tests/Core/GraphContractTests.cpp',
+    "$privateCore/graph.cpp"
+  ) -Output 'CookScopeGraphContractTests'
+
   & (Join-Path $PSScriptRoot 'Build.ps1') -Configuration $Configuration
   & (Join-Path $PSScriptRoot '..\Tests\CLI\BootstrapCliContract.ps1') -Executable '.mqb/bin/CookScopeCli.exe'
 }
