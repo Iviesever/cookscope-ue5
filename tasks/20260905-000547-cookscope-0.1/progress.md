@@ -36,6 +36,15 @@ Done when: malformed/duplicate/unknown data fails closed and equivalent valid ru
 - Rule-specific parameter field schemas remain a PACT-30 responsibility; the PACT-10 reader preserves the strict JSON object and validates the common byte budget without claiming rule evaluation.
 - Fresh `scripts/Test.ps1`: exit `0`; four Core test executables and process CLI passed; MQB discovered exactly five production translation units.
 
+## 2026-09-05 — PACT-10 strict Asset Snapshot domain
+
+- RED: `mqb run Tests/Core/SnapshotContractTests.cpp --no-discover -I Plugins/CookScope/Source/CookScopeCore/Public --std 20 --profile release -o CookScopeSnapshotContractTests` exited `1` with C1083 because `cookscope/snapshot.h` did not exist.
+- GREEN: the test with `Private/snapshot.cpp` and `Private/json.cpp` exited `0` and printed `PASS: strict deterministic Asset Snapshot contract`.
+- Proven snapshot behavior: schema `cookscope.snapshot/1`; engine/platform/Cook/source-SHA provenance; Object/Package/Class/Path; optional Primary Asset ID; disk and cooked measurement kinds; Chunk IDs; Bundles; UTF-8 Tags; Hard/Soft/Manage/Searchable Name typed edges; per-asset source provenance.
+- Available sizes require unsigned 64-bit bytes; unavailable sizes reject bytes. The model never maps estimated or package size to actual-cooked.
+- Parser canonicalizes asset, dependency, Chunk, and Bundle ordering; rejects duplicate object paths, invalid SHA/numeric values, unknown fields, and contradictory size records.
+- Fresh `scripts/Test.ps1`: exit `0`; five Core test executables and process CLI passed; MQB discovered exactly six production translation units.
+
 ## 2026-09-05 — Local baseline and PACT-00 core contract
 
 - Local `main` baseline commit: `2bede4a50f47ee332e11f2dfbb90beb596c9dc0e`.
