@@ -21,6 +21,11 @@
   "discovery": {
     "enabled": true,
     "exclude_dirs": [
+      "Artifacts",
+      "Plugins/CookScope/Source/CookScopeCommandlet",
+      "Plugins/CookScope/Source/CookScopeEditor",
+      "Plugins/CookScope/Source/CookScopeTests",
+      "SampleProject",
       "Tests",
       "docs",
       "tasks"

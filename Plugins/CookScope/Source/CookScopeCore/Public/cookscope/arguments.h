@@ -32,7 +32,6 @@ namespace cookscope
 		std::string message;
 	};
 
-	[[nodiscard]] BootstrapArgumentsResult ParseBootstrapArguments(
+	[[nodiscard]] COOKSCOPECORE_API BootstrapArgumentsResult ParseBootstrapArguments(
 		std::span<const std::string_view> arguments);
 }
-

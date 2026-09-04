@@ -1,0 +1,23 @@
+{
+  "FileVersion": 3,
+  "EngineAssociation": "5.8",
+  "Category": "Samples",
+  "Description": "Minimal deterministic fixtures for the CookScope asset and Cook auditor.",
+  "Modules": [
+    {
+      "Name": "CookScopeSample",
+      "Type": "Runtime",
+      "LoadingPhase": "Default"
+    }
+  ],
+  "AdditionalPluginDirectories": [
+    "../Plugins"
+  ],
+  "Plugins": [
+    {
+      "Name": "CookScope",
+      "Enabled": true
+    }
+  ]
+}
+

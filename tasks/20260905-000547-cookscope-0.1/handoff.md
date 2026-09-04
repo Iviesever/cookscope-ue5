@@ -2,7 +2,7 @@
 
 ## Current state
 
-The dedicated local repository has a verified contract baseline at `2bede4a50f47ee332e11f2dfbb90beb596c9dc0e`. Work is on `feat/cookscope-0.1`; the first pure-core bootstrap contract is GREEN under MQB, while all UE and broader functional gates remain fail-closed.
+The dedicated local repository has a verified contract baseline at `2bede4a50f47ee332e11f2dfbb90beb596c9dc0e`. Work is on `feat/cookscope-0.1`. MQB Core/CLI, UE 5.8 Editor build, real Editor-Cmd Automation/Tab, five-way Commandlet E2E, and an exploratory BuildPlugin run are GREEN. Acceptance remains fail-closed until these results are rerun on the clean source commit.
 
 ## Immutable constraints
 
@@ -16,4 +16,4 @@ The dedicated local repository has a verified contract baseline at `2bede4a50f47
 
 ## Resume point
 
-Continue PACT-00 from the strict standalone helper argument RED test, then add the checked-in MQB probe and UE plugin/sample RED scaffold described in `task.md`.
+Commit the current UE source/scripts, rerun every PACT-00 check on the clean SHA, generate the authoritative source-bound plugin package, then start PACT-10 strict model/JSON tests.

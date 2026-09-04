@@ -1,7 +1,9 @@
 param(
   [ValidateSet('Release')]
   [string]$Configuration = 'Release',
-  [switch]$Timings
+  [switch]$Timings,
+  [switch]$WithUnreal,
+  [string]$EngineRoot = 'D:\program\UnrealEngine\Epic Games\UE_5.8'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -21,5 +23,9 @@ try {
 }
 finally {
   Pop-Location
+}
+
+if ($WithUnreal) {
+  & (Join-Path $PSScriptRoot 'Build-Unreal.ps1') -EngineRoot $EngineRoot
 }
 
