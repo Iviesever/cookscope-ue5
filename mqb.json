@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "build": {
+    "entry": "Tools/CookScopeCli/main.cpp",
+    "configuration": "release",
+    "architecture": "x64",
+    "standard": "20",
+    "type": "exe",
+    "runtime": "MD",
+    "subsystem": "console",
+    "output": "CookScopeCli",
+    "include_dirs": [
+      "Plugins/CookScope/Source/CookScopeCore/Public"
+    ],
+    "compiler_args": [
+      "/WX",
+      "/permissive-",
+      "/utf-8"
+    ]
+  },
+  "discovery": {
+    "enabled": true,
+    "exclude_dirs": [
+      "Tests",
+      "docs",
+      "tasks"
+    ],
+    "extra_sources": [
+      "Plugins/CookScope/Source/CookScopeCore/Private/arguments.cpp",
+      "Plugins/CookScope/Source/CookScopeCore/Private/bootstrap.cpp"
+    ]
+  },
+  "profiles": {
+    "release": {
+      "build": {
+        "configuration": "release",
+        "runtime": "MD",
+        "defines": [
+          "NDEBUG"
+        ],
+        "compiler_args": [
+          "/O2",
+          "/Ob2"
+        ]
+      }
+    }
+  }
+}
