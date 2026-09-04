@@ -25,6 +25,16 @@
 - Final clean Cook at source `b6d6020`: 503 total packages, 496 cooked, 7 platform-skipped, 0 errors, 0 warnings. Development Asset Registry: 505 assets, 408,974 bytes. Cook output: 29 files, 40,306,369 bytes.
 - Local docs commit: `b6d6020`.
 
+## 2026-09-05 — Final local source/package gates
+
+- Clean-source attempt 1: all 16 Core contracts and CLI passed, but the wrapper misread a child script's intentionally nonzero probe `$LASTEXITCODE` as the aggregate result. The failure is preserved at `Artifacts/Smoke/CleanSource/run-c2ed5971bd4240cab0dcf78c21e3fb4e`.
+- The wrapper now relies on PowerShell exception propagation for child scripts and checks exit codes only for external processes. Commit: `52a5d7b`.
+- Clean-source attempt 2 passed from a 430,240-byte `git archive` with no `.git`: all Core tests, fresh UBT, 13 fixture regeneration, and real production-tab Editor Automation returned 0. Archive SHA-256: `32E40E62F606FCFA59B5C697319DE00F4E3635556833328B1ED87366189AB9B4`.
+- Final MQB probe at `52a5d7b`: clean 10 compile misses/1 link miss; immediate no-op 10 compile hits/1 link hit; intentional compile failure exit 4; CLI 56,832 bytes SHA-256 `BE187C46D46861F1664B20ACF508B51B07081454A37C758519B6B3B8ACC6301F`.
+- Final full local suite at `52a5d7b`: 16 Core executables + CLI PASS; UBT + 13 fixtures + 6 PACT Automation PASS; bootstrap exits 0/2/3/4/5; full audit exits 2/0/5; real diff contains one 892-byte added candidate; docs/source-only check PASS.
+- Final BuildPlugin package: `Artifacts/Packages/CookScope-52a5d7b3380a`, 84 files, 228,069,718 bytes. Editor, Game Development, and Game Shipping builds succeeded; only Core entered Game targets.
+- Fresh package ZIP: 52,580,286 bytes, SHA-256 `0AB9B07B4C0F37672D551A54EBFB423A6899DE3825AF004E70052AC1FBC030C9`. Extracted descriptor SHA-256 matched `0B7D907D4F79864E9FD95995C24A57ABE762790392C24C9A5EF97CB0249360C6`; Core/Commandlet/Editor loaded and canonical clean report exited 0.
+
 ## 2026-09-05 — Goal continuation source
 
 - Preserved the continued human objective byte-for-byte as `goal-objective-continuation.md` without replacing the first objective required by repository policy.

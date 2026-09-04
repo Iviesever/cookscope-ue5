@@ -8,7 +8,7 @@ Status is fail-closed: `NOT RUN`, `FAIL`, `BLOCKED`, or `PASS`. A source file ex
 | PACT-00-02 | Plugin builds and loads in UE 5.8 Editor | Build log, Editor log, screenshot, source SHA | PASS: repeated UBT/Editor-Cmd plus real `docs/images/editor.png` |
 | PACT-00-03 | Editor tab opens | Automation/manual evidence and screenshot | PASS: Automation asserts a real `SCookScopePanel` Nomad Tab |
 | PACT-00-04 | Commandlet JSON and stable exit codes | Three E2E invocations | PASS: real Editor-Cmd exits `0/2/3/4/5` |
-| PACT-00-05 | MQB capability boundary | Clean/no-op/failure/identity matrix | NOT RUN |
+| PACT-00-05 | MQB capability boundary | Clean/no-op/failure/identity matrix | PASS: source `52a5d7b`, clean 10 misses, no-op 10/10 hits, intentional failure 4, stable SHA-256 |
 | PACT-10-01 | Versioned snapshot and strict rule schemas | RED/GREEN core tests and canonical golden files | PASS: Core + public artifact round-trips; external Python validator unavailable |
 | PACT-20-01 | Typed Asset Registry/Asset Manager graph | Real fixture scan and typed-edge tests | PASS: 9 graph fixtures plus 4 real resource assets; Hard/Soft/Manage/Searchable Name distinct and de-duplicated |
 | PACT-20-02 | Direct/reverse/why-cooked/path/cycle/limit behavior | Deterministic graph tests and commandlet report | PASS: bounded Core tests + real Registry cycle/why-cooked Automation |
@@ -20,9 +20,9 @@ Status is fail-closed: `NOT RUN`, `FAIL`, `BLOCKED`, or `PASS`. A source file ex
 | PACT-50-02 | Self-contained responsive offline HTML | Browser desktop/narrow tests; console warning/error count 0 | PASS: desktop/narrow Chrome captures, live filters/expansion, Console `[]` |
 | PACT-60-01 | Usable cancellable Slate tool and Editor actions | Automation, screenshots, cancel/unload evidence | PASS: scan/filter/diff/why-cooked/export/cancel/shutdown Automation plus real screenshot |
 | PACT-70-01 | Strict commandlet/CI timeout and failure policy | Success/violation/config/internal/timeout E2E | PASS: full audit exits `2/0/5`, no timed-out partial files, atomic per-report replacement |
-| PACT-70-02 | Complete core and UE Automation suites | Fresh logs bound to source SHA | NOT RUN |
-| PACT-70-03 | BuildPlugin and local package | Paths, sizes, SHA-256, source SHA | PASS: source-bound package at `7f5d7c1`; no Release upload |
-| PACT-70-04 | Fresh extraction and clean-source smoke | Commands, logs, checksums | NOT RUN |
+| PACT-70-02 | Complete core and UE Automation suites | Fresh logs bound to source SHA | PASS: source `52a5d7b`, 16 Core + CLI and 6 UE PACT plus Commandlet/diff E2E |
+| PACT-70-03 | BuildPlugin and local package | Paths, sizes, SHA-256, source SHA | PASS: source `52a5d7b`, 84 files, 228,069,718 bytes; no Release upload |
+| PACT-70-04 | Fresh extraction and clean-source smoke | Commands, logs, checksums | PASS: archive smoke and no-`.git` source smoke at `52a5d7b`; descriptor identity and Editor/Commandlet load verified |
 | DOC-01 | Portfolio/interview/release documentation matches facts | Link and claim audit | PASS: `scripts/Test-Docs.ps1` checks required docs, links, formats, path hygiene, and source-only boundary |
 | AUDIT-01 | Independent read-only audit has no Blocker/High | Auditor report and post-fix rerun | NOT RUN |
 | RELEASE-01 | Merge commit, annotated v0.1.0 and source-only Release with zero assets | Git/GitHub evidence | BLOCKED: user declined authentication |
