@@ -2,7 +2,7 @@
 
 ## Current state
 
-The dedicated local repository has a verified contract baseline at `2bede4a50f47ee332e11f2dfbb90beb596c9dc0e`. Work is on `feat/cookscope-0.1`. MQB Core/CLI, UE 5.8 Editor/Automation/Commandlet, PACT-10 models, PACT-20 Registry/graph, PACT-30 rules/Data Validation, BuildPlugin/fresh extraction, and a real clean UE 5.8 Zen Cook are GREEN. Diff, reports, full Editor workflow, clean-source replay, audit, and remote release remain outstanding.
+The dedicated local repository has a verified contract baseline at `2bede4a50f47ee332e11f2dfbb90beb596c9dc0e`. Work is on `feat/cookscope-0.1`. MQB Core/CLI, UE 5.8 Editor/Automation, typed Registry/graph, rules/Data Validation, real Zen Cook, deterministic Diff, four report formats/browser foundation, strict bootstrap/full-audit Commandlets, BuildPlugin, and fresh extraction are GREEN. Full Editor workflow, actual Cook-size snapshot binding, controlled real-Cook diff, clean-source replay, audit, and remote release remain outstanding.
 
 ## Immutable constraints
 
@@ -16,4 +16,4 @@ The dedicated local repository has a verified contract baseline at `2bede4a50f47
 
 ## Resume point
 
-Commit the Cook slice, then implement deterministic PACT-40 snapshot diff and actual Cook-size capture. Do not rerun long BuildPlugin/Cook on every Core commit; final verification requires both at the final source SHA.
+Commit the full-audit Commandlet slice. Next bind actual Cook Registry sizes into snapshots and generate a controlled real baseline/candidate diff, then expand the Editor workflow. Final verification requires new BuildPlugin and Cook artifacts at final source SHA.

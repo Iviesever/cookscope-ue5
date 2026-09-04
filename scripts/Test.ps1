@@ -37,6 +37,11 @@ try {
   ) -Output 'CookScopeArgumentsContractTests'
 
   Invoke-MqbTest -Sources @(
+    'Tests/Core/AuditArgumentsContractTests.cpp',
+    "$privateCore/arguments.cpp"
+  ) -Output 'CookScopeAuditArgumentsContractTests'
+
+  Invoke-MqbTest -Sources @(
     'Tests/Core/JsonContractTests.cpp',
     "$privateCore/json.cpp"
   ) -Output 'CookScopeJsonContractTests'

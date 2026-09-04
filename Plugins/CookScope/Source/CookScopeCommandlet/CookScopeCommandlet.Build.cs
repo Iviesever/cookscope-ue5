@@ -10,6 +10,7 @@ public class CookScopeCommandlet : ModuleRules
 			"Core",
 			"CoreUObject",
 			"CookScopeCore",
+			"CookScopeEditor",
 			"Engine",
 			"Projects"
 		});

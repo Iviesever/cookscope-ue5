@@ -110,6 +110,17 @@ Done when: every P0 rule family has positive/negative fixtures, stable findings,
 - Real in-app browser loaded the localhost HTML at desktop and 390x844. Severity and Path Search hid/shown rows correctly; narrow controls formed two columns and table remained horizontally accessible. Console warning/error lists were empty before and after interactions. The temporary tab/server were closed.
 - Chunk/Bundle-specific HTML presentation and full baseline/candidate interaction remain outstanding, so PACT-50-02 stays fail-closed despite the verified responsive foundation.
 
+## 2026-09-05 — PACT-70 strict full-audit Commandlet
+
+- Core argument RED: `AuditArgumentsContractTests` failed compilation because the full-audit parser, value object, and MissingConfig error did not exist.
+- Core argument GREEN: strict config/output/source-SHA, optional scope/baseline, boolean fail policy, and 1-86400 second timeout parsed correctly; duplicate, unknown, invalid SHA, and zero timeout failed closed.
+- E2E RED: real `CookScopeAudit` with full arguments returned `3` because only bootstrap mode existed.
+- Full mode now executes strict args -> config -> real Asset Registry/Manager scan -> optional baseline/diff -> shared rule engine -> one canonical result -> JSON/SARIF/JUnit/HTML/Snapshot files -> per-rule fail threshold exit decision. Bootstrap fixture mode remains separate for its stable exit matrix.
+- UBT compiled and linked the Commandlet's shared scanner/report dependencies with exit `0`.
+- Real full-audit E2E GREEN: blocking run returned `2`; non-blocking run returned `0`; both scanned `/Game/CookScopeFixtures`. Five files were written, source SHA provenance matched Git HEAD, and canonical JSON contained exactly one real BadName `naming.asset-prefix` finding.
+- Unified regression then exited `0`: complete MQB suite; UBT; 8 fixtures; three PACT Automation tests; bootstrap `0/2/3/4/5`; full audit `2/0`; report assertions.
+- Timeout is checked fail-closed after synchronous scan/analysis and returns `5`; cancellable in-flight Editor scanning remains PACT-60 work.
+
 ## 2026-09-05 — PACT-20 deterministic typed graph core
 
 - RED: `mqb run Tests/Core/GraphContractTests.cpp --no-discover -I Plugins/CookScope/Source/CookScopeCore/Public --std 20 --profile release -o CookScopeGraphContractTests` exited `1` with C1083 because `cookscope/graph.h` did not exist.

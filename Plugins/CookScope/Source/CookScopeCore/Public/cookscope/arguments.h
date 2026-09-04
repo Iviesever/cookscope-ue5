@@ -12,7 +12,9 @@ namespace cookscope
 	enum class ArgumentError : std::uint8_t
 	{
 		None,
+		MissingConfig,
 		MissingOutput,
+		MissingSourceSha,
 		UnknownArgument,
 		DuplicateArgument,
 		InvalidValue,
@@ -32,6 +34,27 @@ namespace cookscope
 		std::string message;
 	};
 
+	struct AuditArguments
+	{
+		std::string configPath;
+		std::string outputDirectory;
+		std::string sourceSha;
+		std::string scope = "/Game";
+		std::string baselinePath;
+		bool failOnViolation = true;
+		std::uint32_t timeoutSeconds = 300;
+	};
+
+	struct AuditArgumentsResult
+	{
+		bool ok = false;
+		AuditArguments value;
+		ArgumentError error = ArgumentError::None;
+		std::string message;
+	};
+
 	[[nodiscard]] COOKSCOPECORE_API BootstrapArgumentsResult ParseBootstrapArguments(
+		std::span<const std::string_view> arguments);
+	[[nodiscard]] COOKSCOPECORE_API AuditArgumentsResult ParseAuditArguments(
 		std::span<const std::string_view> arguments);
 }
