@@ -28,6 +28,14 @@ Done when: malformed/duplicate/unknown data fails closed and equivalent valid ru
 - Proven syntax behavior: object keys canonicalize in UTF-8 byte order; duplicate keys fail at stable JSON paths; trailing content fails; raw UTF-8 is validated/preserved; escaped UTF-16 requires paired surrogates; controls and escapes serialize deterministically; recursion is bounded at 128 by default.
 - `scripts/Test.ps1` now runs three Core tests plus the process CLI. Fresh result: exit `0`; all tests passed, MQB discovered exactly four production translation units, and no UE adapter/package source entered the MQB target.
 
+## 2026-09-05 — PACT-10 strict Rule Config domain
+
+- RED: `mqb run Tests/Core/RuleConfigContractTests.cpp --no-discover -I Plugins/CookScope/Source/CookScopeCore/Public --std 20 --profile release -o CookScopeRuleConfigContractTests` exited `1` with C1083 because `cookscope/rule_config.h` did not exist.
+- GREEN: the test with `Private/rule_config.cpp` and `Private/json.cpp` exited `0` and printed `PASS: strict versioned Rule Config contract`.
+- Proven domain behavior: schema `cookscope.rules/1`; required Rule fields; strict root/Rule/Scope/Exception field sets; non-empty descriptive fields/selectors; lowercase dotted IDs; duplicate ID rejection; stable Severity/Baseline/FailThreshold enums; unsigned 64-bit `budgetBytes`; Rule ID and Exception canonical ordering; terminal LF.
+- Rule-specific parameter field schemas remain a PACT-30 responsibility; the PACT-10 reader preserves the strict JSON object and validates the common byte budget without claiming rule evaluation.
+- Fresh `scripts/Test.ps1`: exit `0`; four Core test executables and process CLI passed; MQB discovered exactly five production translation units.
+
 ## 2026-09-05 — Local baseline and PACT-00 core contract
 
 - Local `main` baseline commit: `2bede4a50f47ee332e11f2dfbb90beb596c9dc0e`.
