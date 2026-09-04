@@ -13,7 +13,7 @@
 
 namespace
 {
-	std::string ToUtf8(const FString& Text)
+	std::string ValidatorToUtf8(const FString& Text)
 	{
 		FTCHARToUTF8 Converted(*Text);
 		return std::string(Converted.Get(), static_cast<std::size_t>(Converted.Length()));
@@ -34,7 +34,7 @@ namespace
 			Error = FString::Printf(TEXT("Unable to read CookScope rules: %s"), *ConfigPath);
 			return false;
 		}
-		const cookscope::RuleConfigParseResult Parsed = cookscope::ParseRuleConfig(ToUtf8(Text));
+		const cookscope::RuleConfigParseResult Parsed = cookscope::ParseRuleConfig(ValidatorToUtf8(Text));
 		if (!Parsed.ok)
 		{
 			Error = FString::Printf(
@@ -80,7 +80,7 @@ EDataValidationResult UCookScopeValidator::ValidateLoadedAsset_Implementation(
 		return EDataValidationResult::Invalid;
 	}
 
-	const std::string ObjectPath = ToUtf8(InAssetData.GetSoftObjectPath().ToString());
+	const std::string ObjectPath = ValidatorToUtf8(InAssetData.GetSoftObjectPath().ToString());
 	const cookscope::AnalysisResult Analysis = cookscope::Evaluate(Scan.Snapshot, Rules);
 	bool failed = false;
 	bool warned = false;
@@ -118,4 +118,3 @@ EDataValidationResult UCookScopeValidator::ValidateLoadedAsset_Implementation(
 	}
 	return failed ? EDataValidationResult::Invalid : EDataValidationResult::Valid;
 }
-

@@ -2,7 +2,7 @@
 
 ## Current state
 
-The dedicated local repository has a verified contract baseline at `2bede4a50f47ee332e11f2dfbb90beb596c9dc0e`. Work is on `feat/cookscope-0.1`. MQB Core/CLI, UE 5.8 Editor build, real Editor-Cmd Automation/Tab, five-way Commandlet E2E, PACT-10 strict models, PACT-20 typed Registry/graph, PACT-30 core rule families, and shared UE Data Validation are GREEN. A source-bound package at `7f5d7c1ea9ec940f133291467dfe5543c0478eed` passed BuildPlugin and fresh extracted Commandlet load. Clean-source replay remains outstanding.
+The dedicated local repository has a verified contract baseline at `2bede4a50f47ee332e11f2dfbb90beb596c9dc0e`. Work is on `feat/cookscope-0.1`. MQB Core/CLI, UE 5.8 Editor/Automation/Commandlet, PACT-10 models, PACT-20 Registry/graph, PACT-30 rules/Data Validation, BuildPlugin/fresh extraction, and a real clean UE 5.8 Zen Cook are GREEN. Diff, reports, full Editor workflow, clean-source replay, audit, and remote release remain outstanding.
 
 ## Immutable constraints
 
@@ -16,4 +16,4 @@ The dedicated local repository has a verified contract baseline at `2bede4a50f47
 
 ## Resume point
 
-Commit the Data Validation slice. Next add real UE resource metadata fixtures/extraction and then PACT-40 real Cook/diff. Do not rerun long BuildPlugin on every Core commit; final verification requires a new package at the final source SHA.
+Commit the Cook slice, then implement deterministic PACT-40 snapshot diff and actual Cook-size capture. Do not rerun long BuildPlugin/Cook on every Core commit; final verification requires both at the final source SHA.

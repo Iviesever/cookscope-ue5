@@ -13,7 +13,7 @@
 
 namespace
 {
-	std::string ToUtf8(const FString& Text)
+	std::string ScannerToUtf8(const FString& Text)
 	{
 		FTCHARToUTF8 Converted(*Text);
 		return std::string(Converted.Get(), static_cast<std::size_t>(Converted.Length()));
@@ -27,7 +27,7 @@ namespace
 		if (const FPrimaryAssetId PrimaryId = Identifier.GetPrimaryAssetId(); PrimaryId.IsValid())
 		{
 			const FSoftObjectPath Path = AssetManager.GetPrimaryAssetPath(PrimaryId);
-			if (Path.IsValid()) return ToUtf8(Path.ToString());
+			if (Path.IsValid()) return ScannerToUtf8(Path.ToString());
 		}
 		if (!Identifier.PackageName.IsNone() && !Identifier.IsValue())
 		{
@@ -36,9 +36,9 @@ namespace
 			Assets.Sort([](const FAssetData& Left, const FAssetData& Right) {
 				return Left.GetSoftObjectPath().ToString() < Right.GetSoftObjectPath().ToString();
 			});
-			if (!Assets.IsEmpty()) return ToUtf8(Assets[0].GetSoftObjectPath().ToString());
+			if (!Assets.IsEmpty()) return ScannerToUtf8(Assets[0].GetSoftObjectPath().ToString());
 		}
-		return ToUtf8(Identifier.ToString());
+		return ScannerToUtf8(Identifier.ToString());
 	}
 
 	cookscope::DependencyKind DependencyKindFor(const FAssetDependency& Dependency)
@@ -78,7 +78,7 @@ namespace
 		cookscope::AssetRecord& Output)
 	{
 		if (!PrimaryId.IsValid()) return;
-		Output.primaryAssetId = ToUtf8(PrimaryId.ToString());
+		Output.primaryAssetId = ScannerToUtf8(PrimaryId.ToString());
 
 		const FPrimaryAssetRules Rules = AssetManager.GetPrimaryAssetRules(PrimaryId);
 		if (Rules.ChunkId >= 0) Output.chunkIds.push_back(Rules.ChunkId);
@@ -88,10 +88,10 @@ namespace
 		{
 			for (const FAssetBundleEntry& Entry : Entries)
 			{
-				Output.assetBundles.push_back(ToUtf8(Entry.BundleName.ToString()));
+				Output.assetBundles.push_back(ScannerToUtf8(Entry.BundleName.ToString()));
 				for (const FTopLevelAssetPath& Path : Entry.AssetPaths)
 				{
-					Output.dependencies.push_back({ToUtf8(Path.ToString()), cookscope::DependencyKind::Manage});
+					Output.dependencies.push_back({ScannerToUtf8(Path.ToString()), cookscope::DependencyKind::Manage});
 				}
 			}
 		}
@@ -136,17 +136,17 @@ FCookScopeScanResult FCookScopeAssetScanner::ScanPath(const FString& PackagePath
 	});
 
 	cookscope::Snapshot Snapshot;
-	Snapshot.provenance.engineVersion = ToUtf8(FEngineVersion::Current().ToString());
-	Snapshot.provenance.platform = ToUtf8(FPlatformProperties::IniPlatformName());
+	Snapshot.provenance.engineVersion = ScannerToUtf8(FEngineVersion::Current().ToString());
+	Snapshot.provenance.platform = ScannerToUtf8(FPlatformProperties::IniPlatformName());
 	Snapshot.provenance.cookConfiguration = "EditorAssetRegistry";
-	Snapshot.provenance.sourceSha = ToUtf8(SourceSha);
+	Snapshot.provenance.sourceSha = ScannerToUtf8(SourceSha);
 	for (const FAssetData& Asset : Assets)
 	{
 		cookscope::AssetRecord Record;
-		Record.objectPath = ToUtf8(Asset.GetSoftObjectPath().ToString());
-		Record.packageName = ToUtf8(Asset.PackageName.ToString());
-		Record.assetClass = ToUtf8(Asset.AssetClassPath.ToString());
-		Record.packagePath = ToUtf8(Asset.PackagePath.ToString());
+		Record.objectPath = ScannerToUtf8(Asset.GetSoftObjectPath().ToString());
+		Record.packageName = ScannerToUtf8(Asset.PackageName.ToString());
+		Record.assetClass = ScannerToUtf8(Asset.AssetClassPath.ToString());
+		Record.packagePath = ScannerToUtf8(Asset.PackagePath.ToString());
 		Record.diskSize.kind = cookscope::MeasurementKind::Unavailable;
 		FAssetPackageData PackageData;
 		if (Registry.TryGetAssetPackageData(Asset.PackageName, PackageData) == UE::AssetRegistry::EExists::Exists && PackageData.DiskSize >= 0)
@@ -157,13 +157,13 @@ FCookScopeScanResult FCookScopeAssetScanner::ScanPath(const FString& PackagePath
 		Record.cookedSize.kind = cookscope::MeasurementKind::Unavailable;
 		for (const int32 ChunkId : Asset.GetChunkIDs()) Record.chunkIds.push_back(ChunkId);
 		Asset.TagsAndValues.ForEach([&](const TPair<FName, FAssetTagValueRef>& Pair) {
-			Record.tags.emplace(ToUtf8(Pair.Key.ToString()), ToUtf8(Pair.Value.GetStorageString()));
+			Record.tags.emplace(ScannerToUtf8(Pair.Key.ToString()), ScannerToUtf8(Pair.Value.GetStorageString()));
 		});
 		if (Asset.TaggedAssetBundles)
 		{
 			for (const FAssetBundleEntry& Entry : Asset.TaggedAssetBundles->Bundles)
 			{
-				Record.assetBundles.push_back(ToUtf8(Entry.BundleName.ToString()));
+				Record.assetBundles.push_back(ScannerToUtf8(Entry.BundleName.ToString()));
 			}
 		}
 		Record.sourceProvenance = "ue-asset-registry";
@@ -185,4 +185,3 @@ FCookScopeScanResult FCookScopeAssetScanner::ScanPath(const FString& PackagePath
 	Result.Snapshot = Normalized.value;
 	return Result;
 }
-

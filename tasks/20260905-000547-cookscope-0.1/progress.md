@@ -78,6 +78,17 @@ Done when: every P0 rule family has positive/negative fixtures, stable findings,
 - Added eighth deterministic `BadName` fixture and plugin default prefix rule. Fixture regeneration twice produced `CHANGED_COUNT=0` across all eight assets; BadName is 1,381 bytes, SHA-256 `5BEE24387BD4EFB59B8563443F756AF89B1DE0ED3524EBCC86E8E885E370D0B3`.
 - Unified UE run found exactly three PACT tests. `CookScope.PACT30.DataValidationReuse` reported `Result={Success}`: BadName returned Invalid with an error, while DA_Target returned Valid with zero errors. Automation and five-way Commandlet suite exited `0`.
 
+## 2026-09-05 — PACT-40 real UE 5.8 Cook
+
+- Cook process RED 1: `Tests/UE/CookContract.ps1` failed because `scripts/Cook.ps1` did not exist.
+- Added a bounded `RunUAT BuildCookRun -clean -build -cook -skipstage -platform=Win64 -clientconfig=Development -unattended` entry. No Pak/IoStore stage or upload was requested.
+- First real clean run exposed another Unity-only duplicate anonymous `ToUtf8` helper across AssetScanner/Validator. The helpers received responsibility-specific names; Unity was not disabled. The next UBT build exited `0`.
+- Cook process RED 2: RunUAT itself completed `BUILD SUCCESSFUL`, 495 packages and 0 errors/warnings, but the test expected an old loose `DA_Primary.uasset`. UE 5.8 used Zen Store and correctly produced Asset Registry/metadata instead.
+- The test was corrected to require `AssetRegistry.bin`, `Metadata/DevelopmentAssetRegistry.bin`, `Metadata/zenfs.manifest`, and Primary fixture identity inside the Development Registry. It does not use filename heuristics to fabricate loose package output.
+- Final `CookContract.ps1` exited `0`: clean Game+Editor build succeeded; 495 packages cooked, 7 platform-skipped, 502 total; Cook commandlet reported 0 errors and 0 warnings.
+- Real Zen output: 29 files, 40,305,689 bytes. Development Asset Registry: 408,532 bytes with 504 assets and Primary fixture identity. Zen manifest: 460,074 bytes.
+- Cook log: ignored `Artifacts/Evidence/PACT-40/Cook/cook-4faa1276b5a2423d9631fb4bf3ff9ec2.log`. A final-source-SHA replay remains part of PACT-70.
+
 ## 2026-09-05 — PACT-20 deterministic typed graph core
 
 - RED: `mqb run Tests/Core/GraphContractTests.cpp --no-discover -I Plugins/CookScope/Source/CookScopeCore/Public --std 20 --profile release -o CookScopeGraphContractTests` exited `1` with C1083 because `cookscope/graph.h` did not exist.

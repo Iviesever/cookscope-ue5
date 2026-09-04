@@ -14,7 +14,7 @@ Status is fail-closed: `NOT RUN`, `FAIL`, `BLOCKED`, or `PASS`. A source file ex
 | PACT-20-02 | Direct/reverse/why-cooked/path/cycle/limit behavior | Deterministic graph tests and commandlet report | PASS: bounded Core tests + real Registry cycle/why-cooked Automation |
 | PACT-30-01 | P0 naming/path/dependency/resource/Asset Manager/Cook rules | Positive/negative fixtures and rule tests | NOT RUN |
 | PACT-30-02 | UE Data Validation reuses canonical rules | Editor validation automation | PASS: BadName Invalid and DA_Target Valid through shared Core |
-| PACT-40-01 | Real Sample Project Cook | RunUAT/Editor Cook log plus actual output metadata | NOT RUN |
+| PACT-40-01 | Real Sample Project Cook | RunUAT/Editor Cook log plus actual output metadata | PASS: clean UE 5.8 Zen Cook, 495 packages, Registry + manifest verified |
 | PACT-40-02 | Compatible deterministic baseline/candidate diff | Golden byte comparison and controlled fixtures | NOT RUN |
 | PACT-50-01 | JSON/SARIF/JUnit validity and semantic consistency | Schema/parser tests and cross-report assertions | NOT RUN |
 | PACT-50-02 | Self-contained responsive offline HTML | Browser desktop/narrow tests; console warning/error count 0 | NOT RUN |
