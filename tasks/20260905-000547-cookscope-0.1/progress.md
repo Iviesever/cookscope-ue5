@@ -1,5 +1,30 @@
 # Progress
 
+## 2026-09-05 — PACT-60 production Editor workflow
+
+- RED proved the original Nomad Tab still hosted a placeholder and the Editor session contract was absent.
+- Added `FCookScopeEditorSession` with generation-owned worker analysis, cancellation, bounded graph operations, report export, deterministic shutdown/join, filtering, finding expansion, asset details, why-cooked, and Baseline/Candidate summaries.
+- Replaced the placeholder with `SCookScopePanel`: scope/config/baseline/Cook/output inputs, Run/Cancel/Export, progress, four filters, findings, size comparison, typed dependencies, why-cooked, Content Browser locate, and asset open.
+- `CookScope.PACT60.EditorWorkflow` and the tab contract pass in real Editor-Cmd. A real Slate screenshot is generated at 1440×927 by `scripts/Capture-EditorScreenshot.ps1`.
+- Local commits: `128e3d3` and `2f9ebcd`.
+
+## 2026-09-05 — Complete offline HTML and real resource metadata
+
+- HTML RED required Chunk/Bundle filters, asset view, comparison summary, and canonical dependency data. GREEN expanded canonical JSON and added responsive finding/asset tables, comparison expansion, change filtering, and size sorting.
+- In the in-app browser, Path/Chunk/Bundle/change filters and dependency/comparison expansion behaved correctly; Console logs were `[]`. Chrome produced 1440×1200 and 390×844 captures.
+- Added four tiny real UE resource assets under `/Game/CookScopeResourceFixtures`. The scanner normalizes real Texture, Static Mesh, Skeletal Mesh, and SoundWave metadata; `CookScope.PACT30.ResourceMetadataAdapter` produces eight measured findings and zero diagnostics.
+- Resource fixture regeneration preserved all four SHA-256 identities. Unified UE Automation now contains six PACT tests and 13 total assets.
+- Registry/Manager duplicate facts were reproduced as Default Bundle ×2 and Manage edge ×3, then de-duplicated. Core snapshot parsing/writing now also normalizes duplicate Bundle and typed-edge values.
+- Local commits: `9a2e26e`, `d02c5a2`, and `d72478c`.
+
+## 2026-09-05 — Strict timeout, atomic output, portfolio docs, and final clean Cook
+
+- Full-audit timeout RED returned 0 under a deterministic 1.25-second test delay and 1-second budget. GREEN checks the deadline after each bounded phase, returns 5, and publishes no timed-out reports.
+- Report files are written to same-directory `.tmp` files and atomically replaced. Full audit retains blocking/non-blocking exits 2/0.
+- Added English/Chinese README, all required architecture/operations/interview/release documents, rule help, real Editor/report screenshots, link/format/path/source-only validation, and a self-hosted UE 5.8 workflow. `scripts/Test-Docs.ps1` passes.
+- Final clean Cook at source `b6d6020`: 503 total packages, 496 cooked, 7 platform-skipped, 0 errors, 0 warnings. Development Asset Registry: 505 assets, 408,974 bytes. Cook output: 29 files, 40,306,369 bytes.
+- Local docs commit: `b6d6020`.
+
 ## 2026-09-05 — Goal continuation source
 
 - Preserved the continued human objective byte-for-byte as `goal-objective-continuation.md` without replacing the first objective required by repository policy.

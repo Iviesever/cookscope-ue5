@@ -17,6 +17,7 @@ The Automation set covers production tab loading, typed Registry/Asset Manager e
 - `scripts/Cook.ps1`: clean real Win64 Development Cook.
 - `scripts/Build-Plugin.ps1`: source-bound local BuildPlugin package.
 - `scripts/Smoke-PluginPackage.ps1`: ZIP, fresh extraction, new host project, packaged Commandlet smoke.
+- `scripts/Smoke-CleanSource.ps1`: `git archive` extraction, MQB Core tests, fresh UBT build, fixture regeneration, and production-tab smoke without Git metadata.
 - `scripts/Capture-EditorScreenshot.ps1` and `scripts/Capture-HtmlReport.ps1`: real UI artifacts.
 
 Generated logs, packages, screenshots used only as evidence, and Cook output live under ignored paths. Checked-in examples are scrubbed of host paths.
