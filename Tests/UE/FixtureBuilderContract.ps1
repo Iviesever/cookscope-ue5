@@ -45,4 +45,18 @@ foreach ($relativePath in $expected) {
   }
 }
 
-Write-Output "PASS: generated $($expected.Count) deterministic CookScope fixture assets"
+$resourceExpected = @(
+  'Textures\T_Resource.uasset',
+  'Meshes\SM_Resource.uasset',
+  'Meshes\SK_Resource.uasset',
+  'Audio\S_Resource.uasset'
+)
+$resourceRoot = Join-Path $repositoryRoot 'SampleProject\Content\CookScopeResourceFixtures'
+foreach ($relativePath in $resourceExpected) {
+  $assetPath = Join-Path $resourceRoot $relativePath
+  if (-not (Test-Path -LiteralPath $assetPath -PathType Leaf)) {
+    throw "Fixture builder did not create expected resource asset: $assetPath"
+  }
+}
+
+Write-Output "PASS: generated $($expected.Count + $resourceExpected.Count) deterministic CookScope fixture assets"

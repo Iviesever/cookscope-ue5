@@ -61,11 +61,12 @@ public:
 	[[nodiscard]] cookscope::WhyCookedResult ExplainWhyCooked(
 		const TArray<FString>& Roots,
 		const FString& Target) const;
+	[[nodiscard]] FString DescribeFinding(const FCookScopeEditorFindingItem& Item) const;
 	[[nodiscard]] FString DescribeAsset(const FString& AssetPath) const;
+	[[nodiscard]] FString GetComparisonSummary() const;
 	[[nodiscard]] bool ExportReports(const FString& OutputDirectory) const;
 
 private:
 	class FImpl;
 	TUniquePtr<FImpl> Impl;
 };
-

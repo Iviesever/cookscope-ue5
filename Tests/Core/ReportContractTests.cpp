@@ -33,7 +33,11 @@ int main()
 	cookscope::AssetRecord asset;
 	asset.objectPath = "/Game/测试/Bad</script><script>alert(1)</script>.Bad";
 	asset.assetClass = "/Script/Engine.Texture2D";
+	asset.primaryAssetId = "Texture:Bad";
 	asset.cookedSize = {cookscope::MeasurementKind::ActualCooked, 2048};
+	asset.chunkIds = {1, 2};
+	asset.assetBundles = {"Default"};
+	asset.dependencies.push_back({"/Game/Shared/T_Common.T_Common", cookscope::DependencyKind::Soft});
 	snapshot.assets = {asset};
 
 	const auto config = cookscope::ParseRuleConfig(
@@ -44,7 +48,10 @@ int main()
 	if (analysis.findings.size() != 1) return Fail("report fixture must contain one finding");
 	cookscope::SnapshotDiffResult diff;
 	diff.comparable = true;
+	diff.assetChanges.push_back({cookscope::AssetChangeKind::Modified, asset.objectPath, asset.objectPath, {"cookedSize"}});
+	diff.edgeChanges.push_back({cookscope::EdgeChangeKind::Added, asset.objectPath, "/Game/Shared/T_Common.T_Common", {}, cookscope::DependencyKind::Soft});
 	diff.sizeChanges.push_back({asset.objectPath, 1024, 2048, 1024});
+	diff.findingChanges.push_back({cookscope::FindingChangeKind::Added, "budget.asset-size", asset.objectPath, {}, cookscope::Severity::Error});
 
 	const cookscope::ReportSet first = cookscope::RenderReports(snapshot, config.value, analysis, &diff);
 	const cookscope::ReportSet second = cookscope::RenderReports(snapshot, config.value, analysis, &diff);
@@ -80,9 +87,19 @@ int main()
 		first.html.find("id=\"rule-filter\"") == std::string::npos ||
 		first.html.find("id=\"class-filter\"") == std::string::npos ||
 		first.html.find("id=\"path-search\"") == std::string::npos ||
-		first.html.find("id=\"size-sort\"") == std::string::npos)
+		first.html.find("id=\"size-sort\"") == std::string::npos ||
+		first.html.find("id=\"chunk-filter\"") == std::string::npos ||
+		first.html.find("id=\"bundle-filter\"") == std::string::npos ||
+		first.html.find("id=\"comparison-summary\"") == std::string::npos ||
+		first.html.find("id=\"asset-table\"") == std::string::npos)
 	{
-		return Fail("offline HTML must expose required filter, search, and size controls");
+		return Fail("offline HTML must expose filters, baseline comparison, dependency, and Chunk/Bundle views");
+	}
+	if (first.json.find("\"chunkIds\":[1,2]") == std::string::npos ||
+		first.json.find("\"assetBundles\":[\"Default\"]") == std::string::npos ||
+		first.json.find("\"dependencies\":[{\"kind\":\"soft\",\"target\":\"/Game/Shared/T_Common.T_Common\"}]") == std::string::npos)
+	{
+		return Fail("canonical JSON must expose the exact Chunk, Bundle, and dependency data used by HTML");
 	}
 	if (first.html.find("</script><script>alert(1)</script>") != std::string::npos ||
 		first.html.find("\\u003c/script>\\u003cscript>alert(1)\\u003c/script>") == std::string::npos)

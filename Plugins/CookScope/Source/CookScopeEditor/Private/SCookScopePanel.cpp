@@ -61,6 +61,15 @@ void SCookScopePanel::Construct(const FArguments& Arguments)
 				.Text(LOCTEXT("Subtitle", "Asset dependency and Cook budget audit"))
 				.ColorAndOpacity(FSlateColor::UseSubduedForeground())
 			]
+			+ SVerticalBox::Slot().AutoHeight().Padding(16, 0, 16, 12)
+			[
+				SNew(SBox).MinDesiredHeight(58.0f).Padding(FMargin(8.0f, 6.0f))
+				[
+					SAssignNew(Comparison, STextBlock)
+					.Text(LOCTEXT("ComparisonEmpty", "No baseline selected. Current scan is the candidate snapshot."))
+					.AutoWrapText(true)
+				]
+			]
 			+ SVerticalBox::Slot().AutoHeight().Padding(16, 0, 16, 6)
 			[
 				LabelledField(LOCTEXT("Scope", "Scope"), ScopeInput, TEXT("/Game/CookScopeFixtures"))
@@ -245,7 +254,7 @@ void SCookScopePanel::HandleSelectionChanged(TSharedPtr<FCookScopeEditorFindingI
 {
 	(void)SelectInfo;
 	Selected = MoveTemp(Item);
-	if (Selected && Session) Details->SetText(FText::FromString(Session->DescribeAsset(Selected->AssetPath)));
+	if (Selected && Session) Details->SetText(FText::FromString(Session->DescribeFinding(*Selected)));
 }
 
 TSharedRef<ITableRow> SCookScopePanel::GenerateFindingRow(
@@ -274,6 +283,10 @@ EActiveTimerReturnType SCookScopePanel::UpdateFromSession(double CurrentTime, fl
 		{
 			LastState = State;
 			RefreshRows();
+			if (State == ECookScopeEditorSessionState::Complete && Comparison)
+			{
+				Comparison->SetText(FText::FromString(Session->GetComparisonSummary()));
+			}
 		}
 	}
 	return EActiveTimerReturnType::Continue;

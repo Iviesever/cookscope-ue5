@@ -48,6 +48,30 @@ namespace
 		return TEXT("error");
 	}
 
+	FString EditorDependencyKind(cookscope::DependencyKind Kind)
+	{
+		switch (Kind)
+		{
+		case cookscope::DependencyKind::Hard: return TEXT("Hard");
+		case cookscope::DependencyKind::Soft: return TEXT("Soft");
+		case cookscope::DependencyKind::Manage: return TEXT("Manage");
+		case cookscope::DependencyKind::SearchableName: return TEXT("Searchable Name");
+		}
+		return TEXT("Unknown");
+	}
+
+	FString EditorBaselineState(cookscope::FindingBaselineState State)
+	{
+		switch (State)
+		{
+		case cookscope::FindingBaselineState::NotApplicable: return TEXT("Not applicable");
+		case cookscope::FindingBaselineState::New: return TEXT("New");
+		case cookscope::FindingBaselineState::Existing: return TEXT("Existing");
+		case cookscope::FindingBaselineState::Worsened: return TEXT("Worsened");
+		}
+		return TEXT("Not applicable");
+	}
+
 	bool SaveEditorReport(const FString& Path, const std::string& Text)
 	{
 		return FFileHelper::SaveStringToFile(
@@ -71,6 +95,7 @@ public:
 	cookscope::RuleConfig Config;
 	cookscope::AnalysisResult Analysis;
 	cookscope::DependencyGraph Graph;
+	std::optional<cookscope::SnapshotDiffResult> Diff;
 	cookscope::ReportSet Reports;
 };
 
@@ -166,7 +191,11 @@ bool FCookScopeEditorSession::StartScan(const FCookScopeEditorScanSettings& Sett
 		Baseline = ParsedBaseline.value;
 	}
 
-	const uint64 Generation = Impl->Generation;
+	uint64 Generation = 0;
+	{
+		FScopeLock Lock(&Impl->Mutex);
+		Generation = Impl->Generation;
+	}
 	cookscope::Snapshot Snapshot = std::move(Scan.Snapshot);
 	cookscope::RuleConfig Rules = Config.value;
 	Impl->Worker = Async(EAsyncExecution::ThreadPool, [this, Generation, Snapshot = std::move(Snapshot), Rules = std::move(Rules), Baseline = std::move(Baseline)]() mutable {
@@ -216,6 +245,7 @@ bool FCookScopeEditorSession::StartScan(const FCookScopeEditorScanSettings& Sett
 		Impl->Config = std::move(Rules);
 		Impl->Analysis = std::move(Analysis);
 		Impl->Graph = Graph.graph;
+		Impl->Diff = std::move(Diff);
 		Impl->Reports = std::move(Reports);
 		Impl->Progress = 1.0f;
 		Impl->Status = TEXT("Scan complete");
@@ -245,6 +275,7 @@ void FCookScopeEditorSession::Shutdown()
 	Impl->Config = {};
 	Impl->Analysis = {};
 	Impl->Graph = {};
+	Impl->Diff.reset();
 	Impl->Reports = {};
 	Impl->Progress = 0.0f;
 	Impl->Status = TEXT("Ready");
@@ -311,6 +342,47 @@ cookscope::WhyCookedResult FCookScopeEditorSession::ExplainWhyCooked(
 		cookscope::OperationLimits{});
 }
 
+FString FCookScopeEditorSession::DescribeFinding(const FCookScopeEditorFindingItem& Item) const
+{
+	FScopeLock Lock(&Impl->Mutex);
+	const std::string RuleId = EditorSessionToUtf8(Item.RuleId);
+	const std::string AssetPath = EditorSessionToUtf8(Item.AssetPath);
+	const auto Finding = std::find_if(Impl->Analysis.findings.begin(), Impl->Analysis.findings.end(), [&](const cookscope::Finding& Candidate) {
+		return Candidate.ruleId == RuleId && Candidate.assetPath == AssetPath;
+	});
+	if (Finding == Impl->Analysis.findings.end()) return TEXT("Finding not found");
+
+	FString Details = FString::Printf(
+		TEXT("%s\nSeverity %s\nRule %s\nBaseline state %s\n%s"),
+		*Item.AssetPath,
+		*Item.Severity,
+		*Item.RuleId,
+		*EditorBaselineState(Finding->baselineState),
+		*EditorSessionFromUtf8(Finding->message));
+	if (!Finding->relatedAsset.empty()) Details += FString::Printf(TEXT("\nRelated asset %s"), *EditorSessionFromUtf8(Finding->relatedAsset));
+	if (Finding->dependencyKind) Details += FString::Printf(TEXT("\nDependency kind %s"), *EditorDependencyKind(*Finding->dependencyKind));
+	if (Finding->observedBytes) Details += FString::Printf(TEXT("\nObserved %llu bytes"), static_cast<unsigned long long>(*Finding->observedBytes));
+	if (Finding->budgetBytes) Details += FString::Printf(TEXT("\nBudget %llu bytes"), static_cast<unsigned long long>(*Finding->budgetBytes));
+	if (!Finding->metric.empty()) Details += FString::Printf(TEXT("\nMetric %s"), *EditorSessionFromUtf8(Finding->metric));
+	if (Finding->observedValue) Details += FString::Printf(TEXT("\nObserved %llu"), static_cast<unsigned long long>(*Finding->observedValue));
+	if (Finding->limitValue) Details += FString::Printf(TEXT("\nLimit %llu"), static_cast<unsigned long long>(*Finding->limitValue));
+	if (!Finding->observedText.empty()) Details += FString::Printf(TEXT("\nObserved %s"), *EditorSessionFromUtf8(Finding->observedText));
+	if (!Finding->expectedText.empty()) Details += FString::Printf(TEXT("\nExpected %s"), *EditorSessionFromUtf8(Finding->expectedText));
+	if (!Finding->dependencyPath.empty())
+	{
+		Details += TEXT("\nDependency chain");
+		for (const cookscope::DependencyStep& Step : Finding->dependencyPath)
+		{
+			Details += FString::Printf(
+				TEXT("\n  %s -> %s (%s)"),
+				*EditorSessionFromUtf8(Step.source),
+				*EditorSessionFromUtf8(Step.target),
+				*EditorDependencyKind(Step.kind));
+		}
+	}
+	return Details;
+}
+
 FString FCookScopeEditorSession::DescribeAsset(const FString& AssetPath) const
 {
 	FScopeLock Lock(&Impl->Mutex);
@@ -332,7 +404,37 @@ FString FCookScopeEditorSession::DescribeAsset(const FString& AssetPath) const
 		Details += TEXT("\nActual Cook unavailable");
 	}
 	Details += FString::Printf(TEXT("\nDependencies %d"), static_cast<int32>(Asset->dependencies.size()));
+	for (const cookscope::DependencyEdge& Edge : Asset->dependencies)
+	{
+		Details += FString::Printf(
+			TEXT("\n  %s -> %s"),
+			*EditorDependencyKind(Edge.kind),
+			*EditorSessionFromUtf8(Edge.target));
+	}
 	return Details;
+}
+
+FString FCookScopeEditorSession::GetComparisonSummary() const
+{
+	FScopeLock Lock(&Impl->Mutex);
+	if (!Impl->Diff) return TEXT("No baseline selected. Current scan is the candidate snapshot.");
+	const cookscope::SnapshotDiffResult& Diff = *Impl->Diff;
+	FString Summary = FString::Printf(
+		TEXT("Baseline / candidate comparison\nAsset changes %d | Dependency changes %d | Finding changes %d | Size changes %d"),
+		static_cast<int32>(Diff.assetChanges.size()),
+		static_cast<int32>(Diff.edgeChanges.size()),
+		static_cast<int32>(Diff.findingChanges.size()),
+		static_cast<int32>(Diff.sizeChanges.size()));
+	for (const cookscope::CookedSizeChange& Change : Diff.sizeChanges)
+	{
+		Summary += FString::Printf(
+			TEXT("\n%s: %llu -> %llu bytes (%+lld)"),
+			*EditorSessionFromUtf8(Change.assetPath),
+			static_cast<unsigned long long>(Change.beforeBytes),
+			static_cast<unsigned long long>(Change.afterBytes),
+			static_cast<long long>(Change.deltaBytes));
+	}
+	return Summary;
 }
 
 bool FCookScopeEditorSession::ExportReports(const FString& OutputDirectory) const
@@ -344,4 +446,3 @@ bool FCookScopeEditorSession::ExportReports(const FString& OutputDirectory) cons
 		SaveEditorReport(OutputDirectory / TEXT("cookscope.junit.xml"), Impl->Reports.junit) &&
 		SaveEditorReport(OutputDirectory / TEXT("cookscope.html"), Impl->Reports.html);
 }
-

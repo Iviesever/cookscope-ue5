@@ -9,6 +9,7 @@
 #include "Misc/Parse.h"
 #include "Misc/Paths.h"
 #include "Widgets/Docking/SDockTab.h"
+#include "Widgets/SWindow.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -33,6 +34,10 @@ bool FCookScopePACT00SmokeTest::RunTest(const FString& Parameters)
 		if (FParse::Value(FCommandLine::Get(), TEXT("CookScopeScreenshotPath="), ScreenshotPath))
 		{
 			ScreenshotPath = FPaths::ConvertRelativePathToFull(ScreenshotPath);
+			if (const TSharedPtr<SWindow> Window = FSlateApplication::Get().FindWidgetWindow(CookScopeTab.ToSharedRef()))
+			{
+				Window->Resize(FVector2D(1440.0f, 960.0f));
+			}
 			TArray<FColor> Pixels;
 			FIntVector Size = FIntVector::ZeroValue;
 			const bool Captured = FSlateApplication::Get().TakeScreenshot(CookScopeTab->GetContent(), Pixels, Size);

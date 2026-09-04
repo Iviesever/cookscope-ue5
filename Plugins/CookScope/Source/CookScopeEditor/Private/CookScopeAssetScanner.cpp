@@ -5,8 +5,12 @@
 #include "AssetRegistry/AssetIdentifier.h"
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Engine/AssetManager.h"
+#include "Engine/SkeletalMesh.h"
+#include "Engine/StaticMesh.h"
+#include "Engine/Texture2D.h"
 #include "HAL/PlatformProperties.h"
 #include "Misc/EngineVersion.h"
+#include "Sound/SoundWave.h"
 
 #include <algorithm>
 #include <string>
@@ -108,6 +112,63 @@ namespace
 		}
 		AddRegistryDependencies(FAssetIdentifier(PrimaryId), Registry, AssetManager, Output.dependencies);
 	}
+
+	void SetNormalizedTag(cookscope::AssetRecord& Record, const char* Name, const FString& Value)
+	{
+		Record.tags.insert_or_assign(Name, ScannerToUtf8(Value));
+	}
+
+	void CopyNormalizedTag(
+		const FAssetData& Asset,
+		const FName SourceName,
+		cookscope::AssetRecord& Record,
+		const char* TargetName)
+	{
+		FString Value;
+		if (Asset.GetTagValue(SourceName, Value) && !Value.IsEmpty()) SetNormalizedTag(Record, TargetName, Value);
+	}
+
+	void AddResourceMetadata(const FAssetData& Asset, cookscope::AssetRecord& Record)
+	{
+		if (Asset.AssetClassPath == UTexture2D::StaticClass()->GetClassPathName())
+		{
+			if (const UTexture2D* Texture = Cast<UTexture2D>(Asset.GetAsset()))
+			{
+				const FIntPoint Size = Texture->GetImportedSize();
+				if (Size.X > 0) SetNormalizedTag(Record, "TextureWidth", FString::FromInt(Size.X));
+				if (Size.Y > 0) SetNormalizedTag(Record, "TextureHeight", FString::FromInt(Size.Y));
+				const int32 MipCount = FMath::Max(Texture->GetNumMips(), Texture->Source.GetNumMips());
+				if (MipCount > 0) SetNormalizedTag(Record, "TextureMips", FString::FromInt(MipCount));
+			}
+			CopyNormalizedTag(Asset, TEXT("Format"), Record, "TextureFormat");
+		}
+		else if (Asset.AssetClassPath == UStaticMesh::StaticClass()->GetClassPathName())
+		{
+			CopyNormalizedTag(Asset, TEXT("Triangles"), Record, "MeshTriangles");
+		}
+		else if (Asset.AssetClassPath == USkeletalMesh::StaticClass()->GetClassPathName())
+		{
+			CopyNormalizedTag(Asset, TEXT("Vertices"), Record, "MeshVertices");
+		}
+		else if (Asset.AssetClassPath == USoundWave::StaticClass()->GetClassPathName())
+		{
+			if (const USoundWave* Sound = Cast<USoundWave>(Asset.GetAsset()))
+			{
+				const float DurationSeconds = Sound->GetDuration();
+				if (FMath::IsFinite(DurationSeconds) && DurationSeconds > 0.0f)
+				{
+					SetNormalizedTag(Record, "SoundDurationMs", FString::Printf(TEXT("%lld"), FMath::RoundToInt64(DurationSeconds * 1000.0)));
+				}
+				FString Format = Sound->GetRuntimeFormat().ToString();
+				if (Format.IsEmpty() || Format == TEXT("None"))
+				{
+					Format = StaticEnum<ESoundAssetCompressionType>()->GetNameStringByValue(
+						static_cast<int64>(Sound->GetSoundAssetCompressionType()));
+				}
+				if (!Format.IsEmpty()) SetNormalizedTag(Record, "SoundFormat", Format);
+			}
+		}
+	}
 }
 
 FCookScopeScanResult FCookScopeAssetScanner::ScanPath(const FString& PackagePath, const FString& SourceSha)
@@ -166,6 +227,7 @@ FCookScopeScanResult FCookScopeAssetScanner::ScanPath(const FString& PackagePath
 				Record.assetBundles.push_back(ScannerToUtf8(Entry.BundleName.ToString()));
 			}
 		}
+		AddResourceMetadata(Asset, Record);
 		Record.sourceProvenance = "ue-asset-registry";
 		AddRegistryDependencies(FAssetIdentifier(Asset.PackageName), Registry, AssetManager, Record.dependencies);
 		AddManagerData(AssetManager.GetPrimaryAssetIdForData(Asset), Registry, AssetManager, Record);

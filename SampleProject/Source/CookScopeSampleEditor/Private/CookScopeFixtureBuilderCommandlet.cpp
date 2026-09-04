@@ -13,11 +13,19 @@ DEFINE_LOG_CATEGORY_STATIC(LogCookScopeFixtureBuilder, Log, All);
 namespace
 {
 	constexpr TCHAR FixtureRoot[] = TEXT("/Game/CookScopeFixtures");
+	constexpr TCHAR ResourceFixtureRoot[] = TEXT("/Game/CookScopeResourceFixtures");
 
 	struct FFixture
 	{
 		FString PackageName;
 		UCookScopeFixtureAsset* Asset = nullptr;
+	};
+
+	struct FObjectFixture
+	{
+		FString PackageName;
+		UObject* Asset = nullptr;
+		bool bCreated = false;
 	};
 
 	FFixture FindOrCreateFixture(const TCHAR* RelativePackage, const TCHAR* AssetName)
@@ -40,6 +48,39 @@ namespace
 
 	bool SaveFixture(const FFixture& Fixture)
 	{
+		Fixture.Asset->MarkPackageDirty();
+		const FString Filename = FPackageName::LongPackageNameToFilename(
+			Fixture.PackageName,
+			FPackageName::GetAssetPackageExtension());
+		FSavePackageArgs SaveArgs;
+		SaveArgs.TopLevelFlags = RF_Public | RF_Standalone;
+		SaveArgs.SaveFlags = SAVE_None;
+		SaveArgs.Error = GError;
+		return UPackage::SavePackage(Fixture.Asset->GetPackage(), Fixture.Asset, *Filename, SaveArgs);
+	}
+
+	FObjectFixture FindOrDuplicateFixture(
+		const TCHAR* SourceObjectPath,
+		const TCHAR* RelativePackage,
+		const TCHAR* AssetName)
+	{
+		const FString PackageName = FString(ResourceFixtureRoot) / RelativePackage;
+		const FString ObjectPath = PackageName + TEXT(".") + AssetName;
+		if (UObject* Existing = LoadObject<UObject>(nullptr, *ObjectPath)) return {PackageName, Existing, false};
+		UObject* Source = LoadObject<UObject>(nullptr, SourceObjectPath);
+		if (!Source) return {PackageName, nullptr, false};
+		UPackage* Package = CreatePackage(*PackageName);
+		UObject* Asset = DuplicateObject(Source, Package, FName(AssetName));
+		if (!Asset) return {PackageName, nullptr, false};
+		Asset->SetFlags(RF_Public | RF_Standalone | RF_Transactional);
+		FAssetRegistryModule::AssetCreated(Asset);
+		return {PackageName, Asset, true};
+	}
+
+	bool SaveObjectFixture(const FObjectFixture& Fixture)
+	{
+		if (!Fixture.Asset) return false;
+		if (!Fixture.bCreated) return true;
 		Fixture.Asset->MarkPackageDirty();
 		const FString Filename = FPackageName::LongPackageNameToFilename(
 			Fixture.PackageName,
@@ -97,6 +138,12 @@ int32 UCookScopeFixtureBuilderCommandlet::Main(const FString& Params)
 	FFixture Candidate = FindOrCreateFixture(TEXT("Primary/DA_Candidate"), TEXT("DA_Candidate"));
 	FFixture CycleA = FindOrCreateFixture(TEXT("Cycle/DA_CycleA"), TEXT("DA_CycleA"));
 	FFixture CycleB = FindOrCreateFixture(TEXT("Cycle/DA_CycleB"), TEXT("DA_CycleB"));
+	const TArray<FObjectFixture> ResourceFixtures = {
+		FindOrDuplicateFixture(TEXT("/Engine/EngineResources/DefaultTexture.DefaultTexture"), TEXT("Textures/T_Resource"), TEXT("T_Resource")),
+		FindOrDuplicateFixture(TEXT("/Engine/BasicShapes/Cube.Cube"), TEXT("Meshes/SM_Resource"), TEXT("SM_Resource")),
+		FindOrDuplicateFixture(TEXT("/Engine/EngineMeshes/SkeletalCube.SkeletalCube"), TEXT("Meshes/SK_Resource"), TEXT("SK_Resource")),
+		FindOrDuplicateFixture(TEXT("/Engine/EngineSounds/1kSineTonePing.1kSineTonePing"), TEXT("Audio/S_Resource"), TEXT("S_Resource")),
+	};
 
 	Target.Asset->FixtureId = TEXT("fixture.target");
 	Hard.Asset->FixtureId = TEXT("fixture.hard");
@@ -124,9 +171,17 @@ int32 UCookScopeFixtureBuilderCommandlet::Main(const FString& Params)
 			return 4;
 		}
 	}
+	for (const FObjectFixture& Fixture : ResourceFixtures)
+	{
+		if (!SaveObjectFixture(Fixture))
+		{
+			UE_LOG(LogCookScopeFixtureBuilder, Error, TEXT("Failed to save resource fixture: %s"), *Fixture.PackageName);
+			return 4;
+		}
+	}
 
 	IAssetRegistry& Registry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry")).Get();
-	Registry.ScanPathsSynchronous({FixtureRoot}, true);
+	Registry.ScanPathsSynchronous({FixtureRoot, ResourceFixtureRoot}, true);
 	UAssetManager& AssetManager = UAssetManager::Get();
 	AssetManager.ScanPathForPrimaryAssets(
 		FPrimaryAssetType(TEXT("CookScopeFixture")),
@@ -137,6 +192,12 @@ int32 UCookScopeFixtureBuilderCommandlet::Main(const FString& Params)
 		true);
 	AssetManager.UpdateManagementDatabase(EUpdateManagementDatabaseFlags::BuildChunkMap | EUpdateManagementDatabaseFlags::ForceRefresh);
 
-	UE_LOG(LogCookScopeFixtureBuilder, Display, TEXT("Generated %d deterministic fixtures under %s"), Fixtures.Num(), FixtureRoot);
+	UE_LOG(
+		LogCookScopeFixtureBuilder,
+		Display,
+		TEXT("Generated %d deterministic fixtures under %s and %s"),
+		Fixtures.Num() + ResourceFixtures.Num(),
+		FixtureRoot,
+		ResourceFixtureRoot);
 	return 0;
 }

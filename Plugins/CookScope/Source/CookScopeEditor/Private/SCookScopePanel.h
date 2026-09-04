@@ -6,6 +6,7 @@
 
 class SEditableTextBox;
 class SMultiLineEditableTextBox;
+class STextBlock;
 template <typename ItemType> class SListView;
 
 class SCookScopePanel final : public SCompoundWidget
@@ -46,9 +47,9 @@ private:
 	TSharedPtr<SEditableTextBox> RootInput;
 	TSharedPtr<SEditableTextBox> TargetInput;
 	TSharedPtr<SMultiLineEditableTextBox> Details;
+	TSharedPtr<STextBlock> Comparison;
 	TSharedPtr<SListView<TSharedPtr<FCookScopeEditorFindingItem>>> FindingList;
 	TArray<TSharedPtr<FCookScopeEditorFindingItem>> Rows;
 	TSharedPtr<FCookScopeEditorFindingItem> Selected;
 	ECookScopeEditorSessionState LastState = ECookScopeEditorSessionState::Idle;
 };
-
