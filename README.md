@@ -1,14 +1,60 @@
 # CookScope
 
-> **Alpha / Work in progress — no P0 completion claim has been made.**
+CookScope is a source-only Unreal Engine 5.8 Editor plugin, Commandlet, and sample project for deterministic Asset Registry dependency analysis and real Cook-budget enforcement.
 
-CookScope is a planned Unreal Engine 5.8 Editor plugin, commandlet, and sample project for deterministic asset-dependency and Cook-budget auditing.
+> Local `v0.1.0` candidate: Core, UE Automation, Commandlet, real Cook diff, reports, Editor UI, and plugin packaging are exercised locally. GitHub PR/Release publication is intentionally not claimed because no authenticated remote operation was authorized.
 
-The authoritative contract and current evidence are in:
+| Real UE 5.8 Editor tab | Real offline HTML report |
+|---|---|
+| ![CookScope Editor tab](docs/images/editor.png) | ![CookScope HTML report](docs/images/report.png) |
 
-- `docs/PRODUCT_CONTRACT.md`
-- `docs/ACCEPTANCE_MATRIX.md`
-- `tasks/20260905-000547-cookscope-0.1/progress.md`
+Shortest full audit command:
 
-This repository is source-only. Generated plugins, executables, cooked content, reports, and large logs are local artifacts and are not Release assets.
+```powershell
+UnrealEditor-Cmd.exe SampleProject/CookScopeSample.uproject -run=CookScopeAudit -config=Plugins/CookScope/Config/CookScopeRules.json -output=Artifacts/Reports -source-sha=<40-hex-sha>
+```
 
+The sample answers “why was this cooked?” with a typed chain such as `CookScopeFixture:DA_Primary → /Game/CookScopeFixtures/Targets/DA_Target` through Soft/Manage edges. Its controlled baseline/candidate pair adds exactly `/Game/CookScopeFixtures/Primary/DA_Candidate.DA_Candidate`, measured from the real Development Asset Registry at **892 actual-cooked bytes**.
+
+## Verified surface
+
+| Area | Local evidence |
+|---|---|
+| Deterministic Core | 16 C++ contract executables plus a process-level CLI contract via MQB |
+| UE integration | 6 Editor Automation tests over 13 deterministic `.uasset` fixtures |
+| Commandlet | Clean/violation/invocation/internal/timeout exits `0/2/3/4/5` |
+| Cook and diff | UE 5.8 Zen Cook metadata; 9 scoped assets, 3 actual-cooked, one 892-byte candidate addition |
+| Reports | Canonical JSON, SARIF 2.1.0, JUnit XML, responsive self-contained HTML |
+| Editor | Cancellable shared session, filters, finding/detail expansion, baseline comparison, why-cooked, locate/open, four-format export |
+
+Run the main local checks:
+
+```powershell
+pwsh -File scripts/Test.ps1
+pwsh -File scripts/Test-Unreal.ps1
+pwsh -File scripts/Cook.ps1
+pwsh -File scripts/Build-Plugin.ps1
+```
+
+## Architecture and boundaries
+
+`CookScopeCore` owns strict schemas, graphs, rules, diffs, and report projection. UE adapters acquire Asset Registry/Asset Manager/Cook facts once; Slate, Data Validation, Commandlet, and CI consume the same Core results. Only `CookScopeCore` is present in non-Editor targets.
+
+CookScope never labels package/source estimates as actual Cook size. `actual-cooked` exists only when loaded from a real UE Development Asset Registry. Missing measurements remain explicit diagnostics.
+
+This repository intentionally excludes `Binaries`, `Intermediate`, `Saved`, cooked content, local reports, logs, archives, and packaged plugins. A future GitHub Release must contain source only and zero binary assets. See [known limitations](docs/KNOWN_LIMITATIONS.md) for the precise local/remote boundary.
+
+AI assistance was used for implementation and documentation. Every shipped behavioral claim is tied to executable tests or real UE/browser output; see [AI assistance](docs/AI_ASSISTANCE.md).
+
+## Documentation
+
+- [Architecture](docs/ARCHITECTURE.md)
+- [Asset Registry model](docs/ASSET_REGISTRY_MODEL.md)
+- [Asset Manager and Primary Assets](docs/ASSET_MANAGER_AND_PRIMARY_ASSETS.md)
+- [Cook pipeline](docs/COOK_PIPELINE.md)
+- [Rule model](docs/RULE_MODEL.md)
+- [Snapshot schema](docs/SNAPSHOT_SCHEMA.md) and [diff model](docs/DIFF_MODEL.md)
+- [Report formats](docs/REPORT_FORMATS.md) and [Editor tooling](docs/EDITOR_TOOLING.md)
+- [Commandlet and CI](docs/COMMANDLET_AND_CI.md), [build system](docs/BUILD_SYSTEM.md), and [testing](docs/TESTING.md)
+- [Code walkthrough](docs/CODE_WALKTHROUGH.md), [interview guide](docs/INTERVIEW_GUIDE.md), and [live change drills](docs/LIVE_CHANGE_DRILLS.md)
+- [Release notes](docs/RELEASE_NOTES_0.1.0.md)

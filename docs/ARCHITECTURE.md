@@ -2,7 +2,7 @@
 
 ## Selected approach
 
-CookScope uses one plugin with three responsibility-separated modules and one shared pure C++ model/rule/report core:
+CookScope uses one plugin with four responsibility-separated modules and one shared pure C++ model/rule/report core:
 
 ```text
 Sample Project / UE 5.8
@@ -17,6 +17,8 @@ Sample Project / UE 5.8
                |-- Asset Registry / Asset Manager adapter
                |-- Data Validation adapter
                `-- async bounded scan + Slate presentation/actions
+
+        `-- CookScopeTests (Editor development Automation module)
 ```
 
 Pure C++ translation units avoid Unreal types, exceptions, RTTI, global mutable state, wall-clock decisions, and unordered serialization. MQB compiles those exact files into the standalone test/CLI target. UBT compiles the same files inside `CookScopeCore`; UE-only adapters translate `FAssetData`, dependency categories, Primary Asset data, and Cook metadata at the boundary.
@@ -64,11 +66,10 @@ Strict config
 - Invalid config, unknown fields, duplicate Rule IDs, illegal thresholds, corrupt snapshots, schema mismatch, incompatible engine/platform/cook settings, overflowed limits, and report serialization failure fail closed.
 - Bounded graph operations always report `complete`, `truncated`, or `failed`; truncation is never silently presented as a complete answer.
 - Commandlet result codes are stable: `0` success, `2` policy violation, `3` invalid invocation/config, `4` internal/IO/scan error, and `5` timeout/cancel.
-- Editor operations are cancellable, have explicit lifetime ownership, do not block the game thread for long traversal/report work, and drain before module shutdown.
+- Editor operations are cancellable and have explicit lifetime ownership. Registry acquisition is scoped and synchronous on the permitted Editor thread; traversal/rule/diff/report work runs off-thread and drains before module shutdown.
 
 ## Test strategy
 
 - MQB pure-core tests: parser, canonical JSON, graph/cycle/path limits, rules, budgets, diff, reports, Unicode/path case.
 - UBT/Automation tests: UE adapter typing, fixture generation, Asset Registry, Asset Manager, Data Validation, commandlet outcomes, Editor tab/actions/cancel/unload.
 - E2E: real Cook, report browser desktop/narrow viewport with zero console warnings/errors, BuildPlugin, local package, clean extraction, and clean source checkout.
-
