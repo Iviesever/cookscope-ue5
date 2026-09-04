@@ -2,7 +2,7 @@
 
 ## Current state
 
-The dedicated local repository is on `feat/cookscope-0.1`. The initial audit's six High issues were remediated at `a27f210`; a first rerun's two High issues were fixed at `1f2b183`; the latest output-ownership High was fixed at `4eb0f34`. A full committed-source replay and fresh clean-source archive are green. The final independent read-only audit reports 0 Blocker and 0 High, so every local gate passes. GitHub repository/PR/tag/Release work remains user-blocked.
+The public repository is `Iviesever/cookscope-ue5`, and local `main` tracks `origin/main`. PR #1 was created as Draft, marked Ready, and normally merged as `2c3ae0a`; both feature branches were deleted. The merge-result Core/CLI and full UE suites pass. The final independent read-only audit reports 0 Blocker and 0 High. The annotated tag and source-only Release are the remaining release operations.
 
 ## Immutable constraints
 
@@ -12,8 +12,8 @@ The dedicated local repository is on `feat/cookscope-0.1`. The initial audit's s
 - Real Editor, Asset Registry, Cook, reports, package, and clean-source evidence is mandatory.
 - Keep Alpha/WIP until every P0 passes.
 - GitHub custom Release assets must be empty.
-- The user declined GitHub login; do not launch or request authentication again unless the user explicitly reverses that instruction.
+- GitHub authorization was explicitly restored by the user and `gh` verified the active identity as `Iviesever`.
 
 ## Resume point
 
-No local implementation or evidence action remains. Keep remote repository/PR/tag/Release gates BLOCKED and do not perform GitHub authentication or remote release work unless the user explicitly reverses that instruction.
+Commit this verified release-readiness state on `main`, create and push annotated tag `v0.1.0`, publish a source-only GitHub Release, verify its custom `assets` array is empty, then record final release facts.

@@ -4,7 +4,7 @@ Status is fail-closed: `NOT RUN`, `FAIL`, `BLOCKED`, or `PASS`. A source file ex
 
 | ID | Gate | Required evidence | Status |
 |---|---|---|---|
-| PACT-00-01 | Public repository, local baseline, feature branch, Draft PR | GitHub URLs and SHAs | BLOCKED: user declined authentication |
+| PACT-00-01 | Public repository, local baseline, feature branch, Draft PR | GitHub URLs and SHAs | PASS: public `Iviesever/cookscope-ue5`; baseline `2bede4a`; PR #1 merged as `2c3ae0a` |
 | PACT-00-02 | Plugin builds and loads in UE 5.8 Editor | Build log, Editor log, screenshot, source SHA | PASS: repeated UBT/Editor-Cmd plus real `docs/images/editor.png` |
 | PACT-00-03 | Editor tab opens | Automation/manual evidence and screenshot | PASS: Automation asserts a real `SCookScopePanel` Nomad Tab |
 | PACT-00-04 | Commandlet JSON and stable exit codes | Three E2E invocations | PASS: real Editor-Cmd exits `0/2/3/4/5` |
@@ -25,4 +25,4 @@ Status is fail-closed: `NOT RUN`, `FAIL`, `BLOCKED`, or `PASS`. A source file ex
 | PACT-70-04 | Fresh extraction and clean-source smoke | Commands, logs, checksums | PASS: package source `f26472e`; no-`.git` source `4eb0f34`, 451,886 bytes, SHA-256 `CC2D98D6...553E9`, all four stages 0 |
 | DOC-01 | Portfolio/interview/release documentation matches facts | Link and claim audit | PASS: final `scripts/Test-Docs.ps1` validates docs, links, formats, path hygiene, and source-only boundary |
 | AUDIT-01 | Independent read-only audit has no Blocker/High | Auditor report and post-fix rerun | PASS: final independent read-only audit at `4eb0f34` reports 0 Blocker, 0 High; prior output-ownership High closed |
-| RELEASE-01 | Merge commit, annotated v0.1.0 and source-only Release with zero assets | Git/GitHub evidence | BLOCKED: user declined authentication |
+| RELEASE-01 | Merge commit, annotated v0.1.0 and source-only Release with zero assets | Git/GitHub evidence | NOT RUN: PR #1 merge commit `2c3ae0a` complete; tag and Release pending |

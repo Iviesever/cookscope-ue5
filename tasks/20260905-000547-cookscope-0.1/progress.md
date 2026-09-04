@@ -1,5 +1,13 @@
 # Progress
 
+## 2026-09-05 — GitHub authorization and normal PR merge
+
+- The user explicitly restored GitHub authorization. `gh auth status` and `gh api user` verified the active identity as `Iviesever`.
+- Created the public repository `Iviesever/cookscope-ue5`, pushed baseline `main` at `2bede4a`, then pushed `feat/cookscope-0.1` and opened Draft PR #1.
+- PR #1 was marked Ready and GitHub reported it `MERGEABLE/CLEAN`. It was normally merged as two-parent commit `2c3ae0ad79730185ec42da6c5b2d1b5360d765b8`; remote and local feature branches were deleted.
+- Replayed the merged `main`: all 16 Core contracts plus CLI passed; UBT rebuilt 29 actions; 20 fixtures, all 7 UE PACT tests, Commandlet 0/2/3/4/5, wrapper 4/0/2 and timeout 5, and the exact one-asset/+892-byte Cook diff passed.
+- GitHub Actions run `33929171217` was created for the main push and is queued for the explicitly labelled UE 5.8/MQB self-hosted Windows runner. No hosted-run success is claimed.
+
 ## 2026-09-05 — Third independent audit remediation
 
 - The latest read-only audit at `e708b9a` found no Blocker and one High: successful wrapper publication replaced an entire existing output directory even when it contained files not owned by CookScope.

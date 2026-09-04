@@ -2,7 +2,7 @@
 
 ## Verified outcome
 
-CookScope is implemented as a source-only Unreal Engine 5.8 plugin, Commandlet, Sample Project, deterministic pure C++ Core/CLI, real Asset Registry/Cook adapter, four-format reporter, and bounded Slate workflow. Production behavior was verified at implementation source `4eb0f34856217440c8beecc708f27abb281851f5`; the following commit changed documentation only.
+CookScope is implemented as a source-only Unreal Engine 5.8 plugin, Commandlet, Sample Project, deterministic pure C++ Core/CLI, real Asset Registry/Cook adapter, four-format reporter, and bounded Slate workflow. Production behavior was verified at implementation source `4eb0f34856217440c8beecc708f27abb281851f5` and replayed after the normal PR merge at `2c3ae0ad79730185ec42da6c5b2d1b5360d765b8`.
 
 ## Real verification output
 
@@ -41,7 +41,7 @@ BlockingExitCode          : 2
 NonBlockingExitCode       : 0
 TimeoutExitCode           : 5
 HardTimeoutExitCode       : 5
-HardTimeoutSeconds        : 16.891
+HardTimeoutSeconds        : 17.189
 ForeignDirectoryExitCode  : 4
 WrapperCleanExitCode      : 0
 WrapperViolationExitCode  : 2

@@ -1,7 +1,7 @@
 # Known Limitations
 
-- No GitHub remote, Draft PR, hosted CI result, merge, tag publication, or Release is claimed. Authentication was explicitly declined; local Git work is unaffected.
-- The local version remains an Alpha candidate until the final independent audit passes and a source-only remote Release is authorized.
+- The public repository and normal PR merge are complete. No hosted GitHub Actions success is claimed: the checked-in UE 5.8 workflow requires a specifically labelled self-hosted Windows runner, while the release decision is supported by the recorded local full-suite, package, extraction, clean-source, and independent-audit evidence.
+- GitHub Release contents are source only. Local BuildPlugin packages, Cook output, smoke archives, and logs remain ignored and are intentionally not uploaded.
 - Actual-cooked size depends on a compatible UE Development Asset Registry. Without it, Cook measurements are `unavailable`; package-disk size is not substituted.
 - Editor Registry acquisition uses indexed state and never triggers disk discovery during a scan. The module refreshes/snapshots Asset Manager ownership once at PostEngineInit; this engine call is synchronous. Per-scan work fails closed above 4,096 assets or 65,536 typed dependencies, and Core work remains asynchronous/cancellable.
 - The in-process Commandlet deadline is cooperative between bounded phases. `scripts/Invoke-CookScopeAudit.ps1` is the strict CI wall-clock guard: it terminates the exact Editor process tree, returns 5, and prevents timed-out report publication.
