@@ -89,6 +89,15 @@ Done when: every P0 rule family has positive/negative fixtures, stable findings,
 - Real Zen output: 29 files, 40,305,689 bytes. Development Asset Registry: 408,532 bytes with 504 assets and Primary fixture identity. Zen manifest: 460,074 bytes.
 - Cook log: ignored `Artifacts/Evidence/PACT-40/Cook/cook-4faa1276b5a2423d9631fb4bf3ff9ec2.log`. A final-source-SHA replay remains part of PACT-70.
 
+## 2026-09-05 — PACT-40 deterministic snapshot diff core
+
+- RED: `SnapshotDiffContractTests` failed C1083 because `cookscope/diff.h` did not exist.
+- GREEN: compatible baseline/candidate fixtures produced Added, Removed, Modified, and StableAssetId Renamed asset changes; Soft -> Hard TypeChanged edge; added edge; five semantic modified fields; and exact +50 actual-cooked bytes.
+- Compatibility gate fails closed for schema, engine version, platform, or Cook configuration mismatch while allowing source SHA changes. Reversed asset input order produced byte-identical canonical `cookscope.diff/1` JSON.
+- Rename matching uses explicit `StableAssetId`; it does not guess rename from similar filenames. Cook size deltas require ActualCooked on both sides and signed-int64 representability.
+- Fresh `scripts/Test.ps1`: exit `0`; all Core/file/rule/diff/CLI tests passed with nine MQB production translation units. UE Editor Development compiled and linked `diff.cpp` into CookScopeCore with exit `0`.
+- Finding/Severity delta integration and a controlled real-Cook baseline/candidate pair remain outstanding; the PACT-40-02 aggregate gate stays fail-closed.
+
 ## 2026-09-05 — PACT-20 deterministic typed graph core
 
 - RED: `mqb run Tests/Core/GraphContractTests.cpp --no-discover -I Plugins/CookScope/Source/CookScopeCore/Public --std 20 --profile release -o CookScopeGraphContractTests` exited `1` with C1083 because `cookscope/graph.h` did not exist.
