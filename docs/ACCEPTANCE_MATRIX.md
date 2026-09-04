@@ -10,8 +10,8 @@ Status is fail-closed: `NOT RUN`, `FAIL`, `BLOCKED`, or `PASS`. A source file ex
 | PACT-00-04 | Commandlet JSON and stable exit codes | Three E2E invocations | PASS: real Editor-Cmd exits `0/2/3/4/5` at `4dbbbae` |
 | PACT-00-05 | MQB capability boundary | Clean/no-op/failure/identity matrix | NOT RUN |
 | PACT-10-01 | Versioned snapshot and strict rule schemas | RED/GREEN core tests and canonical golden files | PASS: Core + public artifact round-trips; external Python validator unavailable |
-| PACT-20-01 | Typed Asset Registry/Asset Manager graph | Real fixture scan and typed-edge tests | NOT RUN |
-| PACT-20-02 | Direct/reverse/why-cooked/path/cycle/limit behavior | Deterministic graph tests and commandlet report | NOT RUN |
+| PACT-20-01 | Typed Asset Registry/Asset Manager graph | Real fixture scan and typed-edge tests | PASS: 7 real UE assets; Hard/Soft/Manage/Searchable Name distinct |
+| PACT-20-02 | Direct/reverse/why-cooked/path/cycle/limit behavior | Deterministic graph tests and commandlet report | PASS: bounded Core tests + real Registry cycle/why-cooked Automation |
 | PACT-30-01 | P0 naming/path/dependency/resource/Asset Manager/Cook rules | Positive/negative fixtures and rule tests | NOT RUN |
 | PACT-30-02 | UE Data Validation reuses canonical rules | Editor validation automation | NOT RUN |
 | PACT-40-01 | Real Sample Project Cook | RunUAT/Editor Cook log plus actual output metadata | NOT RUN |

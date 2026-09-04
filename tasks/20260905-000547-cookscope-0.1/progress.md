@@ -50,6 +50,21 @@ Done when: stable direct/reverse/path/cycle queries pass bounded tests and the U
 - Extracted descriptor SHA-256 exactly matched source package descriptor. Fresh report SHA-256: `A286DFB4CE419C6BEC6CB8C48450404F1478046A3E86AB7CB187DA97DFAC8A53`.
 - Fresh extraction is proven for this source package; clean-source checkout replay remains outstanding, so the combined PACT-70-04 gate is not marked PASS.
 
+## 2026-09-05 — PACT-20 real UE fixtures and Asset Registry/Manager adapter
+
+- Fixture Builder RED: real Editor-Cmd `-run=CookScopeFixtureBuilder` exited `1`; UE recognized the commandlet name but could not find the class.
+- Implemented a Sample-only Runtime `UCookScopeFixtureAsset`, SampleEditor-only builder commandlet, Primary Asset scan config, and seven tiny project-owned assets. The production plugin does not depend on Sample modules.
+- Fixture Builder GREEN: process test exited `0` and found Target, Hard, Soft, Searchable, Primary, CycleA, and CycleB `.uasset` files. Immediate regeneration changed zero of seven SHA-256 values, proving byte-idempotence for the current UE/toolchain.
+- Fixture sizes/hashes: CycleA 1,595 bytes `171F1DAD67CBBF233AB8B5D5847AC4EE46F7289E8999193AD3142D0E684ABCC4`; CycleB 1,595 `461E6F1D567EB07C13DF763F52BD1E00E7208862FB5F8295F59730DBCAB22208`; Primary 2,328 `E9A0C122E1710AB7DC7C039F6E52FECC9773011724219BB2381DDA316B25D21E`; Hard 1,585 `8D27C01BA993A2AFD082A36E223B9061BADB5823F80D2BF4C7FC9FFCBA8151E7`; Searchable 1,754 `87837E712B2026A4C5AB03C88850EBA54B00BC718132B73A257B33851F1BAFDC`; Soft 1,561 `85999D17759C85D40935D358AFBEB2BA8574FC6CB443C9CFC63513A0BC116642`; Target 1,377 `67DDDB63C069706E886D3EDEF5AAC9EE83A27DA18A9DBA35D046C687DF7221C9`.
+- First UBT after adding fixtures exposed anonymous helper collisions that only occur when UBT Unity combines Core `.cpp` files; MQB's separate-TU build had passed. File-local helpers received responsibility-specific names rather than disabling Unity. A later UBT run exited `0`.
+- Registry scan RED: SampleEditor Automation failed C1083 because `CookScopeAssetScanner.h` did not exist.
+- First scanner UBT linked all new code except `DependencyMask::All`, revealing a cross-DLL export missing from the class. `COOKSCOPECORE_API` was added to the class; repeated UBT exited `0`.
+- Scanner uses UE 5.8 `IAssetRegistry::GetAssetsByPath`, typed `FAssetDependency` category/property flags, `TryGetAssetPackageData`, and `UAssetManager` Primary/Bundle/Manage/Chunk APIs, then canonical-writes and strict-parses through Core before returning data.
+- Initial real scan passed every assertion except Searchable Name. Diagnostics proved `UPROPERTY(AssetRegistrySearchable)` creates a tag, not an `EDependencyCategory::SearchableName` edge.
+- UE source tracing showed `FGameplayTag::Serialize` calls `FArchive::MarkSearchableName`. The fixture changed to a configured real Gameplay Tag instead of fabricating an edge in the scanner. After adding explicit `GameplayTags` module dependencies and regenerating assets, the real edge appeared as `/Script/GameplayTags.GameplayTag::CookScope.Search.Target` with Searchable Name kind.
+- Final `CookScope.PACT20.RealAssetRegistryScan` Automation exited `0`: seven on-disk assets, package disk sizes, cooked size unavailable, Hard/Soft/Manage/Searchable Name, Primary ID, Default Bundle, Chunk 1, real hard cycle, graph build, and Primary-to-Target why-cooked all passed.
+- Unified `scripts/Test-Unreal.ps1` now runs UBT, deterministic fixture generation, two PACT tests, and five Commandlet processes. Fresh top-level result exited `0`.
+
 ## 2026-09-05 — PACT-10 strict JSON syntax layer
 
 - RED: `mqb run Tests/Core/JsonContractTests.cpp --no-discover -I Plugins/CookScope/Source/CookScopeCore/Public --std 20 --release -o CookScopeJsonContractTests` exited `1` with C1083 because `cookscope/json.h` did not exist.

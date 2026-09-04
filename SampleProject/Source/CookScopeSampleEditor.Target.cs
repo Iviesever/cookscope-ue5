@@ -9,6 +9,6 @@ public class CookScopeSampleEditorTarget : TargetRules
 		DefaultBuildSettings = BuildSettingsVersion.V7;
 		IncludeOrderVersion = EngineIncludeOrderVersion.Unreal5_8;
 		ExtraModuleNames.Add("CookScopeSample");
+		ExtraModuleNames.Add("CookScopeSampleEditor");
 	}
 }
-

@@ -10,6 +10,7 @@ $evidenceRoot = Join-Path $repositoryRoot 'Artifacts\Evidence\PACT-00\UE'
 New-Item -ItemType Directory -Path $evidenceRoot -Force | Out-Null
 
 & (Join-Path $PSScriptRoot 'Build-Unreal.ps1') -EngineRoot $EngineRoot
+& (Join-Path $repositoryRoot 'Tests\UE\FixtureBuilderContract.ps1') -EngineRoot $EngineRoot
 
 $automationLog = Join-Path $evidenceRoot 'automation-current.log'
 $automationArguments = @(
@@ -21,7 +22,7 @@ $automationArguments = @(
   '-nosound',
   '-stdout',
   '-FullStdOutLogOutput',
-  '-ExecCmds=Automation RunTests CookScope.PACT00.EditorAndCommandletContracts;Quit',
+  '-ExecCmds=Automation RunTests CookScope.PACT;Quit',
   '-TestExit=Automation Test Queue Empty'
 )
 & $editorCmd @automationArguments *> $automationLog
@@ -30,12 +31,13 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 $automationText = [System.IO.File]::ReadAllText($automationLog)
-if ($automationText -notmatch 'Found 1 automation tests' -or
+if ($automationText -notmatch 'Found 2 automation tests' -or
     $automationText -notmatch 'Test Completed\. Result=\{Success\}.*CookScope\.PACT00\.EditorAndCommandletContracts' -or
+    $automationText -notmatch 'Test Completed\. Result=\{Success\}.*CookScope\.PACT20\.RealAssetRegistryScan' -or
     $automationText -notmatch '\*\*\*\* TEST COMPLETE\. EXIT CODE: 0 \*\*\*\*') {
   throw "CookScope Automation success markers were not found; log: $automationLog"
 }
 
 & (Join-Path $repositoryRoot 'Tests\UE\CommandletContract.ps1') -EngineRoot $EngineRoot
 
-Write-Output "PASS: UE build, CookScope Automation, tab invocation, and Commandlet exit contract"
+Write-Output "PASS: UE build, fixtures, PACT-00/20 Automation, typed Registry scan, tab, and Commandlet exit contract"

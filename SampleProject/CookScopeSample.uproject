@@ -8,6 +8,11 @@
       "Name": "CookScopeSample",
       "Type": "Runtime",
       "LoadingPhase": "Default"
+    },
+    {
+      "Name": "CookScopeSampleEditor",
+      "Type": "Editor",
+      "LoadingPhase": "Default"
     }
   ],
   "AdditionalPluginDirectories": [
@@ -20,4 +25,3 @@
     }
   ]
 }
-
