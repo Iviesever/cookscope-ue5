@@ -964,6 +964,7 @@ namespace cookscope
 			else if (rule.id == "dependency.cycle") EvaluateCycles(snapshot, rule, result);
 			else if (rule.id == "dependency.max-fanout") EvaluateFanOut(snapshot, rule, result);
 			else if (rule.id == "dependency.max-depth") EvaluateDepth(snapshot, rule, result);
+			else if (rule.id == "dependency.soft-hardened") { }
 			else if (rule.id == "resource.texture") EvaluateTexture(snapshot, rule, result);
 			else if (rule.id == "resource.static-mesh") EvaluateStaticMesh(snapshot, rule, result);
 			else if (rule.id == "resource.skeletal-mesh") EvaluateSkeletalMesh(snapshot, rule, result);
@@ -992,6 +993,91 @@ namespace cookscope
 					(left.assetPath == right.assetPath && left.message < right.message)));
 		});
 		std::sort(result.diagnostics.begin(), result.diagnostics.end(), [](const AnalysisDiagnostic& left, const AnalysisDiagnostic& right) {
+			return left.ruleId < right.ruleId ||
+				(left.ruleId == right.ruleId && (left.assetPath < right.assetPath ||
+					(left.assetPath == right.assetPath && left.message < right.message)));
+		});
+		return result;
+	}
+
+	AnalysisResult Evaluate(const Snapshot& candidate, const RuleConfig& config, const Snapshot* baseline)
+	{
+		AnalysisResult result = Evaluate(candidate, config);
+		if (!baseline)
+		{
+			return result;
+		}
+
+		for (const RuleDefinition& rule : config.rules)
+		{
+			if (rule.id != "dependency.soft-hardened") continue;
+			std::map<std::pair<std::string, std::string>, DependencyKind> baselineEdges;
+			for (const AssetRecord& asset : baseline->assets)
+			{
+				for (const DependencyEdge& edge : asset.dependencies)
+				{
+					baselineEdges.emplace(std::make_pair(asset.objectPath, edge.target), edge.kind);
+				}
+			}
+			for (const AssetRecord& asset : candidate.assets)
+			{
+				if (!MatchesScope(rule, asset.objectPath)) continue;
+				for (const DependencyEdge& edge : asset.dependencies)
+				{
+					const auto previous = baselineEdges.find(std::make_pair(asset.objectPath, edge.target));
+					if (edge.kind != DependencyKind::Hard || previous == baselineEdges.end() || previous->second != DependencyKind::Soft)
+					{
+						continue;
+					}
+					Finding finding = DependencyFinding(
+						rule,
+						{asset.objectPath, edge.target, edge.kind},
+						"dependency changed from Soft to Hard");
+					finding.observedText = "hard";
+					finding.expectedText = "soft";
+					finding.baselineState = FindingBaselineState::Worsened;
+					result.findings.push_back(std::move(finding));
+				}
+			}
+		}
+
+		const AnalysisResult baselineResult = Evaluate(*baseline, config);
+		auto sameIdentity = [](const Finding& left, const Finding& right) {
+			return left.ruleId == right.ruleId && left.assetPath == right.assetPath &&
+				left.relatedAsset == right.relatedAsset && left.metric == right.metric && left.message == right.message;
+		};
+		auto worsened = [](const Finding& candidateFinding, const Finding& baselineFinding) {
+			if (candidateFinding.severity > baselineFinding.severity) return true;
+			if (candidateFinding.observedBytes && baselineFinding.observedBytes &&
+				*candidateFinding.observedBytes > *baselineFinding.observedBytes) return true;
+			if (candidateFinding.observedValue && baselineFinding.observedValue &&
+				*candidateFinding.observedValue > *baselineFinding.observedValue) return true;
+			return false;
+		};
+
+		std::vector<Finding> filtered;
+		for (Finding& finding : result.findings)
+		{
+			if (finding.baselineState == FindingBaselineState::NotApplicable)
+			{
+				const auto previous = std::find_if(baselineResult.findings.begin(), baselineResult.findings.end(), [&](const Finding& item) {
+					return sameIdentity(finding, item);
+				});
+				if (previous == baselineResult.findings.end()) finding.baselineState = FindingBaselineState::New;
+				else finding.baselineState = worsened(finding, *previous) ? FindingBaselineState::Worsened : FindingBaselineState::Existing;
+			}
+
+			const auto rule = std::find_if(config.rules.begin(), config.rules.end(), [&](const RuleDefinition& item) {
+				return item.id == finding.ruleId;
+			});
+			const bool reportAll = rule != config.rules.end() && rule->baseline == BaselineBehavior::ReportAll;
+			if (reportAll || finding.baselineState != FindingBaselineState::Existing)
+			{
+				filtered.push_back(std::move(finding));
+			}
+		}
+		result.findings = std::move(filtered);
+		std::sort(result.findings.begin(), result.findings.end(), [](const Finding& left, const Finding& right) {
 			return left.ruleId < right.ruleId ||
 				(left.ruleId == right.ruleId && (left.assetPath < right.assetPath ||
 					(left.assetPath == right.assetPath && left.message < right.message)));

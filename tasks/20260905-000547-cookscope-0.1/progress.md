@@ -62,6 +62,13 @@ Done when: every P0 rule family has positive/negative fixtures, stable findings,
 - Summation detects uint64 overflow and fails closed via diagnostics.
 - Fresh `scripts/Test.ps1`: exit `0`; all Core/file/rule/aggregate/CLI tests passed with eight MQB production translation units.
 
+## 2026-09-05 — PACT-30 baseline suppression and Soft-to-Hard worsening
+
+- RED: `BaselineRuleContractTests` failed compilation because Finding lacked baseline state and `Evaluate` had no baseline overload.
+- GREEN: new naming violation remained; unchanged naming violation was suppressed; package size growth 1,500 -> 2,000 bytes was `Worsened`; Soft -> Hard edge was a typed `Worsened` finding; `report-all` retained an unchanged forbidden-path finding as `Existing`.
+- Finding baseline states are explicit `NotApplicable`, `New`, `Existing`, or `Worsened`. Numeric/byte/Severity increases count as worsening; identity uses Rule ID, asset, related asset, metric, and message.
+- Fresh full MQB suite exited `0`. UE build waited for an unrelated Build.bat via the official mutex, then compiled and linked CookScopeCore successfully with exit `0`; no other process was terminated.
+
 ## 2026-09-05 — PACT-20 deterministic typed graph core
 
 - RED: `mqb run Tests/Core/GraphContractTests.cpp --no-discover -I Plugins/CookScope/Source/CookScopeCore/Public --std 20 --profile release -o CookScopeGraphContractTests` exited `1` with C1083 because `cookscope/graph.h` did not exist.

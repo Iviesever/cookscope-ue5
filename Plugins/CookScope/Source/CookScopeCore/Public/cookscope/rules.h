@@ -12,6 +12,14 @@
 
 namespace cookscope
 {
+	enum class FindingBaselineState : std::uint8_t
+	{
+		NotApplicable,
+		New,
+		Existing,
+		Worsened,
+	};
+
 	struct Finding
 	{
 		std::string ruleId;
@@ -29,6 +37,7 @@ namespace cookscope
 		std::optional<std::uint64_t> limitValue;
 		std::string observedText;
 		std::string expectedText;
+		FindingBaselineState baselineState = FindingBaselineState::NotApplicable;
 	};
 
 	enum class AnalysisDiagnosticCode : std::uint8_t
@@ -54,4 +63,8 @@ namespace cookscope
 
 	[[nodiscard]] COOKSCOPECORE_API bool GlobMatches(std::string_view pattern, std::string_view value);
 	[[nodiscard]] COOKSCOPECORE_API AnalysisResult Evaluate(const Snapshot& snapshot, const RuleConfig& config);
+	[[nodiscard]] COOKSCOPECORE_API AnalysisResult Evaluate(
+		const Snapshot& candidate,
+		const RuleConfig& config,
+		const Snapshot* baseline);
 }
