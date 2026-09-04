@@ -125,6 +125,27 @@ int main()
 		return Fail("incompatible platform must fail closed with a stable reason");
 	}
 
+	cookscope::AnalysisResult baselineFindings;
+	baselineFindings.findings = {
+		{.ruleId = "rule.changed", .assetPath = "/Game/A.A", .severity = cookscope::Severity::Warning, .message = "same finding"},
+		{.ruleId = "rule.resolved", .assetPath = "/Game/B.B", .severity = cookscope::Severity::Error, .message = "resolved finding"},
+	};
+	cookscope::AnalysisResult candidateFindings;
+	candidateFindings.findings = {
+		{.ruleId = "rule.changed", .assetPath = "/Game/A.A", .severity = cookscope::Severity::Error, .message = "same finding"},
+		{.ruleId = "rule.added", .assetPath = "/Game/C.C", .severity = cookscope::Severity::Error, .message = "new finding"},
+	};
+	cookscope::SnapshotDiffResult findingDiff;
+	findingDiff.comparable = true;
+	cookscope::AppendFindingChanges(baselineFindings, candidateFindings, findingDiff);
+	if (findingDiff.findingChanges.size() != 3 ||
+		findingDiff.findingChanges[0].kind != cookscope::FindingChangeKind::Added ||
+		findingDiff.findingChanges[1].kind != cookscope::FindingChangeKind::SeverityChanged ||
+		findingDiff.findingChanges[2].kind != cookscope::FindingChangeKind::Resolved)
+	{
+		return Fail("finding diff must report added, severity-changed, and resolved states in stable order");
+	}
+
 	std::cout << "PASS: deterministic compatible snapshot diff contract\n";
 	return 0;
 }

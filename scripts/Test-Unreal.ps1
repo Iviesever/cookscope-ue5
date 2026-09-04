@@ -42,5 +42,6 @@ if ($automationText -notmatch 'Found 4 automation tests' -or
 
 & (Join-Path $repositoryRoot 'Tests\UE\CommandletContract.ps1') -EngineRoot $EngineRoot
 & (Join-Path $repositoryRoot 'Tests\UE\FullAuditCommandletContract.ps1') -EngineRoot $EngineRoot
+& (Join-Path $repositoryRoot 'Tests\UE\RealCookDiffContract.ps1') -EngineRoot $EngineRoot
 
-Write-Output "PASS: UE build, fixtures, PACT Automation, Registry, Data Validation, bootstrap/full audit Commandlets, and reports"
+Write-Output "PASS: UE build, fixtures, PACT Automation, Registry, Data Validation, bootstrap/full audit, real Cook diff, and reports"

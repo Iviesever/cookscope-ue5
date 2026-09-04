@@ -6,6 +6,7 @@
 #include <limits>
 #include <map>
 #include <set>
+#include <tuple>
 #include <utility>
 
 namespace cookscope
@@ -141,6 +142,28 @@ namespace cookscope
 			case DependencyKind::SearchableName: return "searchable-name";
 			}
 			return "hard";
+		}
+
+		std::string DiffSeverityName(Severity severity)
+		{
+			switch (severity)
+			{
+			case Severity::Note: return "note";
+			case Severity::Warning: return "warning";
+			case Severity::Error: return "error";
+			}
+			return "error";
+		}
+
+		std::string DiffFindingChangeName(FindingChangeKind kind)
+		{
+			switch (kind)
+			{
+			case FindingChangeKind::Added: return "added";
+			case FindingChangeKind::Resolved: return "resolved";
+			case FindingChangeKind::SeverityChanged: return "severity-changed";
+			}
+			return "added";
 		}
 
 		JsonValue DiffJsonString(std::string value)
@@ -309,6 +332,63 @@ namespace cookscope
 			sizes.array.push_back(std::move(item));
 		}
 		root.object.emplace("sizeChanges", std::move(sizes));
+
+		JsonValue findings;
+		findings.type = JsonType::Array;
+		for (const FindingChange& change : diff.findingChanges)
+		{
+			JsonValue item;
+			item.type = JsonType::Object;
+			item.object.emplace("kind", DiffJsonString(DiffFindingChangeName(change.kind)));
+			item.object.emplace("ruleId", DiffJsonString(change.ruleId));
+			item.object.emplace("assetPath", DiffJsonString(change.assetPath));
+			item.object.emplace("beforeSeverity", change.beforeSeverity ? DiffJsonString(DiffSeverityName(*change.beforeSeverity)) : JsonValue{});
+			item.object.emplace("afterSeverity", change.afterSeverity ? DiffJsonString(DiffSeverityName(*change.afterSeverity)) : JsonValue{});
+			findings.array.push_back(std::move(item));
+		}
+		root.object.emplace("findingChanges", std::move(findings));
 		return WriteCanonicalJson(root) + "\n";
+	}
+
+	void AppendFindingChanges(
+		const AnalysisResult& baseline,
+		const AnalysisResult& candidate,
+		SnapshotDiffResult& diff)
+	{
+		using FindingKey = std::tuple<std::string, std::string, std::string, std::string>;
+		std::map<FindingKey, Severity> before;
+		std::map<FindingKey, Severity> after;
+		auto key = [](const Finding& finding) {
+			return FindingKey{finding.ruleId, finding.assetPath, finding.relatedAsset, finding.message};
+		};
+		for (const Finding& finding : baseline.findings) before.emplace(key(finding), finding.severity);
+		for (const Finding& finding : candidate.findings) after.emplace(key(finding), finding.severity);
+		std::set<FindingKey> keys;
+		for (const auto& [item, ignored] : before) { (void)ignored; keys.insert(item); }
+		for (const auto& [item, ignored] : after) { (void)ignored; keys.insert(item); }
+		for (const FindingKey& item : keys)
+		{
+			const auto oldFinding = before.find(item);
+			const auto newFinding = after.find(item);
+			const auto& [ruleId, assetPath, relatedAsset, message] = item;
+			(void)relatedAsset;
+			(void)message;
+			if (oldFinding == before.end())
+			{
+				diff.findingChanges.push_back({FindingChangeKind::Added, ruleId, assetPath, std::nullopt, newFinding->second});
+			}
+			else if (newFinding == after.end())
+			{
+				diff.findingChanges.push_back({FindingChangeKind::Resolved, ruleId, assetPath, oldFinding->second, std::nullopt});
+			}
+			else if (oldFinding->second != newFinding->second)
+			{
+				diff.findingChanges.push_back({FindingChangeKind::SeverityChanged, ruleId, assetPath, oldFinding->second, newFinding->second});
+			}
+		}
+		std::sort(diff.findingChanges.begin(), diff.findingChanges.end(), [](const FindingChange& left, const FindingChange& right) {
+			return left.ruleId < right.ruleId || (left.ruleId == right.ruleId &&
+				(left.assetPath < right.assetPath || (left.assetPath == right.assetPath && left.kind < right.kind)));
+		});
 	}
 }

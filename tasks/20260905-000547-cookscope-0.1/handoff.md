@@ -2,7 +2,7 @@
 
 ## Current state
 
-The dedicated local repository has a verified contract baseline at `2bede4a50f47ee332e11f2dfbb90beb596c9dc0e`. Work is on `feat/cookscope-0.1`. MQB Core/CLI, UE 5.8 Editor/Automation, typed Registry/graph, rules/Data Validation, real Zen Cook with actual-size snapshot merge, deterministic Diff, four report formats/browser foundation, strict bootstrap/full-audit Commandlets, BuildPlugin, and fresh extraction are GREEN. Full Editor workflow, controlled real-Cook diff, clean-source replay, audit, and remote release remain outstanding.
+The dedicated local repository has a verified contract baseline at `2bede4a50f47ee332e11f2dfbb90beb596c9dc0e`. Work is on `feat/cookscope-0.1`. MQB Core/CLI, UE 5.8 Editor/Automation, typed Registry/graph, rules/Data Validation, real Zen Cook with actual sizes, controlled real-Cook diff, four report formats/browser foundation, strict bootstrap/full-audit Commandlets, BuildPlugin, and fresh extraction are GREEN. Full Editor workflow, clean-source replay, final package/Cook replay, audit, and remote release remain outstanding.
 
 ## Immutable constraints
 

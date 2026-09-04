@@ -150,6 +150,12 @@ namespace
 			Candidate,
 			Config.value,
 			Baseline ? &*Baseline : nullptr);
+		if (Baseline && Diff)
+		{
+			const cookscope::AnalysisResult BaselineFindings = cookscope::Evaluate(*Baseline, Config.value);
+			const cookscope::AnalysisResult CandidateFindings = cookscope::Evaluate(Candidate, Config.value);
+			cookscope::AppendFindingChanges(BaselineFindings, CandidateFindings, *Diff);
+		}
 		const cookscope::ReportSet Reports = cookscope::RenderReports(
 			Candidate,
 			Config.value,

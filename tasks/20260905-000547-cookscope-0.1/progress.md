@@ -142,6 +142,16 @@ Done when: every P0 rule family has positive/negative fixtures, stable findings,
 - GREEN: added one deterministic Primary fixture with Default bundle to the existing Target. UBT exited `0`; builder process generated and detected 9 total fixtures.
 - The candidate is committed before recooking so its Cook output and diff can bind to a concrete Git SHA.
 
+## 2026-09-05 — Controlled real Cook baseline/candidate diff
+
+- Candidate source SHA: `f11384b874b35a487b56bc152a53e247437dc814`; baseline source SHA: `cae3fe37332c068ceeddd614a6b8505cdbb42350`.
+- Candidate `CookContract.ps1` exited `0`: 496 packages cooked versus baseline 495; Development Registry 505 assets versus 504; 29 Zen files totaled 40,306,369 bytes versus 40,305,689 (+680 directory bytes).
+- `RealCookDiffContract.ps1` ran full audit with the committed baseline and current Development Registry, exited `0`, and produced a comparable diff with exactly one asset change: Added `/Game/CookScopeFixtures/Primary/DA_Candidate.DA_Candidate`.
+- Candidate snapshot contains 9 assets and 3 ActualCooked assets. DA_Candidate actual cooked package size is 892 bytes. Baseline has 8 assets and 2 ActualCooked assets.
+- Added Finding Diff RED/ GREEN to Core: Added, Resolved, and SeverityChanged finding states are stable and included in canonical `cookscope.diff/1`. Full audit computes raw baseline/candidate findings for diff while retaining baseline-filtered user-facing findings.
+- Real Commandlet output copied without host paths to `Examples/reports/cookscope-sample.{json,sarif,junit.xml,html}` and `Examples/snapshots/cookscope-real-candidate.json`.
+- Latest sample hashes: JSON `0FF391D538AF270C38520B53930AA346DF5AD8A61AE4FC8BA8B5DA5CD2C1C88D`; SARIF `6B8C8133834B4763F2F4804C9BE025A2DAB3475113B3AC306FBA56196EAF5522`; JUnit `450E707E8A28B753499CE7C14A2BA2C2005D347852D8B054E112089551367BDB`; HTML `0C2067859F8952225292E6A43FB6D3C6621ABA2EAA0BE74C592AD7EFC523DBA6`; candidate snapshot `0C686012FF0C2F207850B699A3D30C430DA2895DF47CDE9C4A044AAFC4912C4A`.
+
 ## 2026-09-05 — PACT-20 deterministic typed graph core
 
 - RED: `mqb run Tests/Core/GraphContractTests.cpp --no-discover -I Plugins/CookScope/Source/CookScopeCore/Public --std 20 --profile release -o CookScopeGraphContractTests` exited `1` with C1083 because `cookscope/graph.h` did not exist.
