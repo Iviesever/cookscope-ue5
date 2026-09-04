@@ -2,7 +2,7 @@
 
 ## Current state
 
-The dedicated local repository is on `feat/cookscope-0.1`. The initial audit's six High issues were remediated at `a27f210`; a first rerun found two more High issues. Transactional report-set publication and complete stable Asset Manager ownership landed at `1f2b183`. The real baseline `66256ac` and candidate Cook still produce one Added 892-byte asset with stable non-Bundle Manager facts. Final source-bound replay/package/clean-source and one more independent audit rerun remain; GitHub PR/Release stays user-blocked.
+The dedicated local repository is on `feat/cookscope-0.1`. The initial audit's six High issues were remediated at `a27f210`; a first rerun's two High issues were fixed by transactional report-set publication and complete stable Asset Manager ownership at `1f2b183`. Final source `f26472e` has green MQB/Core/UE/docs, real Cook diff, BuildPlugin, extraction, and clean-source evidence. Only one final independent read-only audit rerun remains; GitHub PR/Release stays user-blocked.
 
 ## Immutable constraints
 

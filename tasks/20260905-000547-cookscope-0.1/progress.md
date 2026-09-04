@@ -37,6 +37,16 @@
 - To remove refresh-order drift, checked baseline/candidate snapshots now contain the same stable non-Bundle Manager facts. Real diff remains exactly one Added 892-byte `DA_Candidate`, and Editor comparison matches.
 - Second remediation implementation commit: `1f2b183`.
 
+## 2026-09-05 — Transactional/Manager final replay
+
+- Final evidence/docs source `f26472e` passed MQB clean/no-op/failure, all 16 Core contracts + CLI, UBT, 20 deterministic fixtures, all 7 UE PACT tests, bootstrap 0/2/3/4/5, full audit 2/0/5, transactional hard timeout, one-change real Cook diff, and documentation/source-only checks.
+- Hard timeout interrupted a 30-second post-first-JSON stall in 16.934 seconds. All five previously published sentinel reports remained byte-identical; no staging directory remained.
+- First BuildPlugin attempt failed with C1085 after old ignored evidence consumed disk space. No source issue was claimed. Fourteen superseded old/failed package, smoke, and archive artifacts were removed, freeing about 13.8 GB; retained artifacts remain reproducible from scripts.
+- Retried final BuildPlugin succeeded: `Artifacts/Packages/CookScope-f26472ee1113`, 84 files, 229,251,282 bytes.
+- Final fresh package ZIP: 52,841,296 bytes, SHA-256 `833F75A27DC38C2E26FF4F0FE79219D970F66701F505BA7C079BE0804E5ED888`; descriptor identity matched and packaged Core/Commandlet/Editor loaded with exit 0.
+- Final clean-source archive: 450,193 bytes, SHA-256 `D726AF25BFFB6EBA6321DC0C8414ACBE77AACBF1315221E494DE60D291E94E7B`; fresh Core, UBT, 20 fixtures, and production-tab smoke all returned 0.
+- A final independent read-only audit rerun is the sole remaining local gate.
+
 ## 2026-09-05 — PACT-60 production Editor workflow
 
 - RED proved the original Nomad Tab still hosted a placeholder and the Editor session contract was absent.
