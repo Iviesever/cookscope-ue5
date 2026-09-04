@@ -100,17 +100,6 @@ namespace
 			}
 		}
 
-		TArray<FName> ManagedPackages;
-		if (AssetManager.GetManagedPackageList(PrimaryId, ManagedPackages))
-		{
-			for (const FName PackageName : ManagedPackages)
-			{
-				Output.dependencies.push_back({
-					ResolveIdentifier(FAssetIdentifier(PackageName), Registry, AssetManager),
-					cookscope::DependencyKind::Manage});
-			}
-		}
-		AddRegistryDependencies(FAssetIdentifier(PrimaryId), Registry, AssetManager, Output.dependencies);
 	}
 
 	void SetNormalizedTag(cookscope::AssetRecord& Record, const char* Name, const FString& Value)
@@ -254,6 +243,10 @@ FCookScopeScanResult FCookScopeAssetScanner::ScanPath(
 			for (const FAssetBundleEntry& Entry : Asset.TaggedAssetBundles->Bundles)
 			{
 				Record.assetBundles.push_back(ScannerToUtf8(Entry.BundleName.ToString()));
+				for (const FTopLevelAssetPath& Path : Entry.AssetPaths)
+				{
+					Record.dependencies.push_back({ScannerToUtf8(Path.ToString()), cookscope::DependencyKind::Manage});
+				}
 			}
 		}
 		AddResourceMetadata(Asset, Record);
