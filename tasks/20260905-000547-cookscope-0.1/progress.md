@@ -37,6 +37,19 @@ Done when: stable direct/reverse/path/cycle queries pass bounded tests and the U
 - Root input order reversal produced byte-equivalent root/step results. A one-edge Searchable Name route beat a two-edge mixed route. A zero-depth limit propagated `Truncated` and returned no fabricated complete explanation.
 - Fresh `scripts/Test.ps1`: exit `0`; all Core/file/CLI tests passed with seven MQB production translation units.
 
+## 2026-09-05 — Source-bound BuildPlugin and fresh-extraction smoke
+
+- After the unrelated UE pipeline released the global UBT mutex, `scripts/Build-Plugin.ps1` ran from clean SHA `7f5d7c1ea9ec940f133291467dfe5543c0478eed` and exited `0`.
+- RunUAT built UnrealEditor plus UnrealGame Win64 Development and Shipping. Game targets compiled only the seven pure `CookScopeCore` translation units; Editor/Commandlet/Tests stayed excluded from non-Editor targets.
+- Authoritative local package: `Artifacts/Packages/CookScope-7f5d7c1ea9ec`, 58 files, 207,349,925 bytes. It remains ignored and will not be uploaded to a Release.
+- Identity files: Commandlet DLL 84,992 bytes SHA-256 `A606CAEF93FBF6A7C20A4DDF3DE665F6D8D547B73D5A37B08368B8B2FC132C44`; Core DLL 454,144 bytes `92D54AB43BC8AA406E9FEC5FD48182DDE34CEB38EE358B2217F52915B5503DDF`; Editor DLL 96,256 bytes `9C588E1D059B166AC670A4052725AEE6147ACA610A6F82F99B459CFE69D15123`; Tests DLL 59,392 bytes `5A8B93CE69FADDCA8EF174EC7D516732209CF0B2C11E62F22BDA2A5BEC502321`; descriptor 835 bytes `C8D7DB92CB68EFC313BCF632F8D3293A46EEB0B98609E072D857230EB902E869`.
+- Package summary originally serialized `totalBytes` as `207349925.0` because PowerShell returned a floating aggregate. The checked-in script now casts to `Int64`; a later final package will verify the corrected field type.
+- Fresh smoke attempt 1 created and extracted the local ZIP and loaded Core/Editor/Tests, but `-ExecCmds=Quit` did not terminate after Editor initialization. After more than three minutes, PID 47628 was revalidated as this exact CookScope smoke process and stopped; no unrelated process was touched. The attempt is recorded as failed.
+- Fresh smoke attempt 2 used a new archive and HostProject, then ran the packaged `CookScopeAudit` Commandlet instead of relying on console Quit. It exited `0`, loaded packaged Core/Commandlet/Editor, and produced canonical clean JSON.
+- Successful local ZIP: `Artifacts/Archives/CookScope-e750bf43c31f4051818c620942ad06f1.zip`, 47,534,630 bytes, SHA-256 `C835CAB7E2909B363018CC6EE4D7DE5F258ABF931EEA74BF7B9FCDDF924F9A91`.
+- Extracted descriptor SHA-256 exactly matched source package descriptor. Fresh report SHA-256: `A286DFB4CE419C6BEC6CB8C48450404F1478046A3E86AB7CB187DA97DFAC8A53`.
+- Fresh extraction is proven for this source package; clean-source checkout replay remains outstanding, so the combined PACT-70-04 gate is not marked PASS.
+
 ## 2026-09-05 — PACT-10 strict JSON syntax layer
 
 - RED: `mqb run Tests/Core/JsonContractTests.cpp --no-discover -I Plugins/CookScope/Source/CookScopeCore/Public --std 20 --release -o CookScopeJsonContractTests` exited `1` with C1083 because `cookscope/json.h` did not exist.

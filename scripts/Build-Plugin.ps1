@@ -56,7 +56,7 @@ try {
     engine = '5.8.0-55116800'
     packagePath = $resolvedPackage
     fileCount = $files.Count
-    totalBytes = ($files | Measure-Object Length -Sum).Sum
+    totalBytes = [int64](($files | Measure-Object Length -Sum).Sum)
     identityFiles = $identity
   }
   $summaryPath = "$resolvedPackage.summary.json"
@@ -67,4 +67,3 @@ try {
 finally {
   Pop-Location
 }
-

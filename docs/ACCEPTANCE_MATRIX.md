@@ -21,7 +21,7 @@ Status is fail-closed: `NOT RUN`, `FAIL`, `BLOCKED`, or `PASS`. A source file ex
 | PACT-60-01 | Usable cancellable Slate tool and Editor actions | Automation, screenshots, cancel/unload evidence | NOT RUN |
 | PACT-70-01 | Strict commandlet/CI timeout and failure policy | Success/violation/config/internal/timeout E2E | NOT RUN |
 | PACT-70-02 | Complete core and UE Automation suites | Fresh logs bound to source SHA | NOT RUN |
-| PACT-70-03 | BuildPlugin and local package | Paths, sizes, SHA-256, source SHA | BLOCKED: unrelated AuthorityArena UE job holds global UBT mutex during source-bound run |
+| PACT-70-03 | BuildPlugin and local package | Paths, sizes, SHA-256, source SHA | PASS: source-bound package at `7f5d7c1`; no Release upload |
 | PACT-70-04 | Fresh extraction and clean-source smoke | Commands, logs, checksums | NOT RUN |
 | DOC-01 | Portfolio/interview/release documentation matches facts | Link and claim audit | NOT RUN |
 | AUDIT-01 | Independent read-only audit has no Blocker/High | Auditor report and post-fix rerun | NOT RUN |

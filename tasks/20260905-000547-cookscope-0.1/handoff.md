@@ -2,7 +2,7 @@
 
 ## Current state
 
-The dedicated local repository has a verified contract baseline at `2bede4a50f47ee332e11f2dfbb90beb596c9dc0e`. Work is on `feat/cookscope-0.1`. At source SHA `4dbbbaebadca79944b38ee52f4e3981d90e1dd01`, MQB Core/CLI, UE 5.8 Editor build, real Editor-Cmd Automation/Tab, and five-way Commandlet E2E are GREEN. PACT-10 strict JSON, Rule Config, Snapshot, public Schema, and fixture round-trips are GREEN under MQB. Source-bound BuildPlugin is externally blocked by an unrelated AuthorityArena UE pipeline taking the global UBT mutex between RunUAT stages; do not terminate it.
+The dedicated local repository has a verified contract baseline at `2bede4a50f47ee332e11f2dfbb90beb596c9dc0e`. Work is on `feat/cookscope-0.1`. MQB Core/CLI, UE 5.8 Editor build, real Editor-Cmd Automation/Tab, five-way Commandlet E2E, PACT-10 strict models, and PACT-20 typed graph/why-cooked Core are GREEN. A source-bound package at `7f5d7c1ea9ec940f133291467dfe5543c0478eed` passed BuildPlugin and fresh extracted Commandlet load. Clean-source replay remains outstanding.
 
 ## Immutable constraints
 
@@ -16,4 +16,4 @@ The dedicated local repository has a verified contract baseline at `2bede4a50f47
 
 ## Resume point
 
-Begin PACT-20 deterministic typed graph RED tests under MQB. Retry source-bound BuildPlugin from a fresh package path only after the unrelated UE pipeline and global UBT mutex are idle.
+Commit the package-smoke script/evidence notes, then begin the real UE Asset Registry fixture and scan RED slice. Do not rerun long BuildPlugin on every Core commit; final verification requires a new package at the final source SHA.
