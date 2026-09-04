@@ -40,6 +40,13 @@ namespace
 			return Edge.kind == Kind;
 		});
 	}
+
+	int32 CountEdge(const cookscope::AssetRecord& Asset, std::string_view Target, cookscope::DependencyKind Kind)
+	{
+		return static_cast<int32>(std::count_if(Asset.dependencies.begin(), Asset.dependencies.end(), [&](const cookscope::DependencyEdge& Edge) {
+			return Edge.target == Target && Edge.kind == Kind;
+		}));
+	}
 }
 
 bool FCookScopeAssetRegistryScanTest::RunTest(const FString& Parameters)
@@ -81,9 +88,13 @@ bool FCookScopeAssetRegistryScanTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Primary Asset ID is captured"), Primary->primaryAssetId == std::optional<std::string>("CookScopeFixture:DA_Primary"));
 	TestTrue(TEXT("Default bundle is captured"),
 		std::find(Primary->assetBundles.begin(), Primary->assetBundles.end(), "Default") != Primary->assetBundles.end());
+	TestEqual(TEXT("Bundle identity is de-duplicated across Registry and Asset Manager"),
+		static_cast<int32>(std::count(Primary->assetBundles.begin(), Primary->assetBundles.end(), "Default")), 1);
 	TestTrue(TEXT("Configured Chunk ID is captured"),
 		std::find(Primary->chunkIds.begin(), Primary->chunkIds.end(), 1) != Primary->chunkIds.end());
 	TestTrue(TEXT("Manage dependency remains typed"), HasEdge(*Primary, Target->objectPath, cookscope::DependencyKind::Manage));
+	TestEqual(TEXT("Manage edge identity is de-duplicated across Registry and Asset Manager"),
+		CountEdge(*Primary, Target->objectPath, cookscope::DependencyKind::Manage), 1);
 
 	const cookscope::GraphBuildResult Graph = cookscope::BuildDependencyGraph(Result.Snapshot, cookscope::OperationLimits{});
 	TestTrue(TEXT("Scanned snapshot builds a complete graph"), Graph.state == cookscope::OperationState::Complete);

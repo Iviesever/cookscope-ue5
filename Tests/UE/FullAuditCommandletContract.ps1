@@ -26,7 +26,8 @@ function Invoke-FullAudit {
     [Parameter(Mandatory = $true)]
     [bool]$FailOnViolation,
     [Parameter(Mandatory = $true)]
-    [string]$LogName
+    [string]$LogName,
+    [int]$TimeoutSeconds = 120
   )
   $arguments = @(
     $project,
@@ -46,7 +47,7 @@ function Invoke-FullAudit {
     '-cook-platform=Windows',
     '-cook-configuration=Development',
     "-fail-on-violation=$($FailOnViolation.ToString().ToLowerInvariant())",
-    '-timeout-seconds=120'
+    "-timeout-seconds=$TimeoutSeconds"
   )
   & $editorCmd @arguments *> (Join-Path $runRoot $LogName)
   return $LASTEXITCODE
@@ -82,11 +83,41 @@ if ($nonBlockingExit -ne 0) {
   throw "Expected non-blocking full audit exit 0, got $nonBlockingExit"
 }
 
+$timeoutOutput = Join-Path $runRoot 'timeout'
+$previousDelay = $env:COOKSCOPE_TEST_DELAY_MS
+try {
+  $env:COOKSCOPE_TEST_DELAY_MS = '1250'
+  $timeoutExit = Invoke-FullAudit -Output $timeoutOutput -FailOnViolation $false -LogName 'timeout.log' -TimeoutSeconds 1
+}
+finally {
+  if ($null -eq $previousDelay) {
+    Remove-Item Env:COOKSCOPE_TEST_DELAY_MS -ErrorAction SilentlyContinue
+  }
+  else {
+    $env:COOKSCOPE_TEST_DELAY_MS = $previousDelay
+  }
+}
+if ($timeoutExit -ne 5) {
+  throw "Expected full audit timeout exit 5, got $timeoutExit"
+}
+if (Test-Path -LiteralPath $timeoutOutput) {
+  $timeoutFiles = @(Get-ChildItem -LiteralPath $timeoutOutput -File -ErrorAction SilentlyContinue)
+  if ($timeoutFiles.Count -ne 0) {
+    throw 'Timed-out audit must not publish partial report files'
+  }
+}
+foreach ($outputPath in @($blockingOutput, $nonBlockingOutput)) {
+  if (@(Get-ChildItem -LiteralPath $outputPath -Filter '*.tmp' -File -ErrorAction SilentlyContinue).Count -ne 0) {
+    throw "Atomic report write left a temporary file under $outputPath"
+  }
+}
+
 [pscustomobject]@{
   Result = 'PASS'
   EvidenceRoot = $runRoot
   SourceSha = $sourceSha
   BlockingExitCode = $blockingExit
   NonBlockingExitCode = $nonBlockingExit
+  TimeoutExitCode = $timeoutExit
   FindingCount = @($json.findings).Count
 } | Format-List

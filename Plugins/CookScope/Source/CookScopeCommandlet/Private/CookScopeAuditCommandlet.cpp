@@ -12,6 +12,8 @@
 #include "cookscope/snapshot.h"
 
 #include "HAL/FileManager.h"
+#include "HAL/PlatformMisc.h"
+#include "HAL/PlatformProcess.h"
 #include "HAL/PlatformTime.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
@@ -53,12 +55,24 @@ namespace
 		return true;
 	}
 
-	bool SaveUtf8(const FString& Path, const std::string& Text)
+	bool SaveUtf8Atomic(const FString& Path, const std::string& Text)
 	{
-		return FFileHelper::SaveStringToFile(
+		const FString TemporaryPath = Path + TEXT(".tmp");
+		IFileManager& Files = IFileManager::Get();
+		Files.Delete(*TemporaryPath, false, true, true);
+		if (!FFileHelper::SaveStringToFile(
 			FString(UTF8_TO_TCHAR(Text.c_str())),
-			*Path,
-			FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
+			*TemporaryPath,
+			FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM))
+		{
+			return false;
+		}
+		if (!Files.Move(*Path, *TemporaryPath, true, true, false, true))
+		{
+			Files.Delete(*TemporaryPath, false, true, true);
+			return false;
+		}
+		return true;
 	}
 
 	bool FindingBlocks(const cookscope::Finding& Finding, const cookscope::RuleConfig& Config)
@@ -78,6 +92,16 @@ namespace
 			UE_LOG(LogCookScopeCommandlet, Error, TEXT("%s"), UTF8_TO_TCHAR(Parsed.message.c_str()));
 			return cookscope::CommandletExitCode(cookscope::AuditStatus::InvalidInvocation);
 		}
+		const auto DeadlineExpired = [&](const TCHAR* Phase) {
+			if (FPlatformTime::Seconds() - StartedAt <= Parsed.value.timeoutSeconds) return false;
+			UE_LOG(
+				LogCookScopeCommandlet,
+				Error,
+				TEXT("Audit exceeded timeout of %u seconds during %s"),
+				Parsed.value.timeoutSeconds,
+				Phase);
+			return true;
+		};
 
 		const FString ConfigPath = FPaths::ConvertRelativePathToFull(UTF8_TO_TCHAR(Parsed.value.configPath.c_str()));
 		std::string ConfigText;
@@ -93,6 +117,15 @@ namespace
 				UTF8_TO_TCHAR(Config.error.path.c_str()), UTF8_TO_TCHAR(Config.error.message.c_str()));
 			return cookscope::CommandletExitCode(cookscope::AuditStatus::InvalidInvocation);
 		}
+#if WITH_DEV_AUTOMATION_TESTS
+		const FString TestDelayText = FPlatformMisc::GetEnvironmentVariable(TEXT("COOKSCOPE_TEST_DELAY_MS"));
+		const int32 TestDelayMs = FCString::Atoi(*TestDelayText);
+		if (TestDelayMs > 0 && TestDelayMs <= 10000)
+		{
+			FPlatformProcess::SleepNoStats(static_cast<float>(TestDelayMs) / 1000.0f);
+		}
+#endif
+		if (DeadlineExpired(TEXT("configuration"))) return cookscope::CommandletExitCode(cookscope::AuditStatus::Cancelled);
 
 		const FCookScopeScanResult Scan = FCookScopeAssetScanner::ScanPath(
 			UTF8_TO_TCHAR(Parsed.value.scope.c_str()),
@@ -102,6 +135,7 @@ namespace
 			UE_LOG(LogCookScopeCommandlet, Error, TEXT("Asset scan failed: %s"), *Scan.Error);
 			return cookscope::CommandletExitCode(cookscope::AuditStatus::InternalError);
 		}
+		if (DeadlineExpired(TEXT("Asset Registry scan"))) return cookscope::CommandletExitCode(cookscope::AuditStatus::Cancelled);
 		cookscope::Snapshot Candidate = Scan.Snapshot;
 		if (!Parsed.value.cookRegistryPath.empty())
 		{
@@ -117,6 +151,7 @@ namespace
 				return cookscope::CommandletExitCode(cookscope::AuditStatus::InternalError);
 			}
 			Candidate = Merge.Snapshot;
+			if (DeadlineExpired(TEXT("Cook Registry merge"))) return cookscope::CommandletExitCode(cookscope::AuditStatus::Cancelled);
 		}
 
 		std::optional<cookscope::Snapshot> Baseline;
@@ -144,6 +179,7 @@ namespace
 				UE_LOG(LogCookScopeCommandlet, Error, TEXT("Baseline is not comparable: %s"), UTF8_TO_TCHAR(Diff->error.c_str()));
 				return cookscope::CommandletExitCode(cookscope::AuditStatus::InvalidInvocation);
 			}
+			if (DeadlineExpired(TEXT("baseline diff"))) return cookscope::CommandletExitCode(cookscope::AuditStatus::Cancelled);
 		}
 
 		const cookscope::AnalysisResult Analysis = cookscope::Evaluate(
@@ -156,17 +192,14 @@ namespace
 			const cookscope::AnalysisResult CandidateFindings = cookscope::Evaluate(Candidate, Config.value);
 			cookscope::AppendFindingChanges(BaselineFindings, CandidateFindings, *Diff);
 		}
+		if (DeadlineExpired(TEXT("rule evaluation"))) return cookscope::CommandletExitCode(cookscope::AuditStatus::Cancelled);
 		const cookscope::ReportSet Reports = cookscope::RenderReports(
 			Candidate,
 			Config.value,
 			Analysis,
 			Diff ? &*Diff : nullptr);
 
-		if (FPlatformTime::Seconds() - StartedAt > Parsed.value.timeoutSeconds)
-		{
-			UE_LOG(LogCookScopeCommandlet, Error, TEXT("Audit exceeded timeout of %u seconds"), Parsed.value.timeoutSeconds);
-			return cookscope::CommandletExitCode(cookscope::AuditStatus::Cancelled);
-		}
+		if (DeadlineExpired(TEXT("report rendering"))) return cookscope::CommandletExitCode(cookscope::AuditStatus::Cancelled);
 		const FString OutputDirectory = FPaths::ConvertRelativePathToFull(UTF8_TO_TCHAR(Parsed.value.outputDirectory.c_str()));
 		if (!IFileManager::Get().MakeDirectory(*OutputDirectory, true))
 		{
@@ -174,11 +207,11 @@ namespace
 			return cookscope::CommandletExitCode(cookscope::AuditStatus::InternalError);
 		}
 		const std::string SnapshotJson = cookscope::WriteCanonicalSnapshot(Candidate);
-		if (!SaveUtf8(OutputDirectory / TEXT("cookscope.json"), Reports.json) ||
-			!SaveUtf8(OutputDirectory / TEXT("cookscope.sarif"), Reports.sarif) ||
-			!SaveUtf8(OutputDirectory / TEXT("cookscope.junit.xml"), Reports.junit) ||
-			!SaveUtf8(OutputDirectory / TEXT("cookscope.html"), Reports.html) ||
-			!SaveUtf8(OutputDirectory / TEXT("cookscope.snapshot.json"), SnapshotJson))
+		if (!SaveUtf8Atomic(OutputDirectory / TEXT("cookscope.json"), Reports.json) ||
+			!SaveUtf8Atomic(OutputDirectory / TEXT("cookscope.sarif"), Reports.sarif) ||
+			!SaveUtf8Atomic(OutputDirectory / TEXT("cookscope.junit.xml"), Reports.junit) ||
+			!SaveUtf8Atomic(OutputDirectory / TEXT("cookscope.html"), Reports.html) ||
+			!SaveUtf8Atomic(OutputDirectory / TEXT("cookscope.snapshot.json"), SnapshotJson))
 		{
 			UE_LOG(LogCookScopeCommandlet, Error, TEXT("Unable to write one or more reports under %s"), *OutputDirectory);
 			return cookscope::CommandletExitCode(cookscope::AuditStatus::InternalError);
@@ -261,11 +294,7 @@ int32 UCookScopeAuditCommandlet::Main(const FString& Params)
 	const uint64 ErrorCount = Parsed.value.status == cookscope::AuditStatus::Violation ? 1 : 0;
 	const cookscope::BootstrapReport Report{Parsed.value.status, ErrorCount, 0};
 	const std::string Json = cookscope::WriteBootstrapJson(Report);
-	const FString JsonText(UTF8_TO_TCHAR(Json.c_str()));
-	if (!FFileHelper::SaveStringToFile(
-		JsonText,
-		*OutputPath,
-		FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM))
+	if (!SaveUtf8Atomic(OutputPath, Json))
 	{
 		UE_LOG(LogCookScopeCommandlet, Error, TEXT("Unable to write output report: %s"), *OutputPath);
 		return cookscope::CommandletExitCode(cookscope::AuditStatus::InternalError);

@@ -231,6 +231,19 @@ FCookScopeScanResult FCookScopeAssetScanner::ScanPath(const FString& PackagePath
 		Record.sourceProvenance = "ue-asset-registry";
 		AddRegistryDependencies(FAssetIdentifier(Asset.PackageName), Registry, AssetManager, Record.dependencies);
 		AddManagerData(AssetManager.GetPrimaryAssetIdForData(Asset), Registry, AssetManager, Record);
+		std::sort(Record.chunkIds.begin(), Record.chunkIds.end());
+		Record.chunkIds.erase(std::unique(Record.chunkIds.begin(), Record.chunkIds.end()), Record.chunkIds.end());
+		std::sort(Record.assetBundles.begin(), Record.assetBundles.end());
+		Record.assetBundles.erase(std::unique(Record.assetBundles.begin(), Record.assetBundles.end()), Record.assetBundles.end());
+		std::sort(Record.dependencies.begin(), Record.dependencies.end(), [](const cookscope::DependencyEdge& Left, const cookscope::DependencyEdge& Right) {
+			if (Left.target != Right.target) return Left.target < Right.target;
+			return static_cast<uint8>(Left.kind) < static_cast<uint8>(Right.kind);
+		});
+		Record.dependencies.erase(
+			std::unique(Record.dependencies.begin(), Record.dependencies.end(), [](const cookscope::DependencyEdge& Left, const cookscope::DependencyEdge& Right) {
+				return Left.target == Right.target && Left.kind == Right.kind;
+			}),
+			Record.dependencies.end());
 		Snapshot.assets.push_back(std::move(Record));
 	}
 
