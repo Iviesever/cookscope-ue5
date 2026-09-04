@@ -6,7 +6,9 @@
 - RED extended `FullAuditCommandletContract.ps1`: the wrapper returned 0 and removed a root sentinel plus an unrelated nested directory instead of rejecting the destination.
 - GREEN now publishes a `.cookscope-output` marker, replaces only an empty/legacy/marked directory containing exclusively the five managed reports, and returns 4 without touching a directory containing any unknown file or subdirectory.
 - The full contract passed: foreign-directory 4 with both sentinel files byte-identical, clean 0, violation 2, cooperative timeout 5, and hard timeout 5 in 16.940 seconds with the old report set preserved.
-- A final independent read-only rerun remains required before `AUDIT-01` can pass.
+- Fix/docs commit: `4eb0f34`. A full committed-source replay passed all 16 Core/CLI contracts, UBT, 20 deterministic fixtures, all 7 UE PACT tests, bootstrap 0/2/3/4/5, wrapper 4/0/2 plus both timeout modes, and the exact one-asset/+892-byte real Cook diff.
+- Fresh no-`.git` source archive: 451,886 bytes, SHA-256 `CC2D98D697CCF7D0F26BC2AA5B55F0B59CA1DB9E49A150E94E7FCE2DC5A553E9`; Core, UBT, fixture, and Editor smoke stages all exited 0.
+- Final independent read-only audit at `4eb0f34` reports 0 Blocker and 0 High. The prior output-ownership High is closed and `AUDIT-01` is PASS.
 
 ## 2026-09-05 — Independent audit remediation
 
