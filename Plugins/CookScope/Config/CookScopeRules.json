@@ -1,0 +1,29 @@
+{
+  "schema": "cookscope.rules/1",
+  "rules": [
+    {
+      "id": "naming.asset-prefix",
+      "name": "Asset type prefix",
+      "description": "Requires stable prefixes for configured asset classes.",
+      "severity": "error",
+      "scope": {
+        "include": ["/Game/**"],
+        "exclude": ["/Game/Developers/**"]
+      },
+      "parameters": {
+        "classPrefixes": {
+          "/Script/CookScopeSample.CookScopeFixtureAsset": "DA_",
+          "/Script/Engine.SkeletalMesh": "SK_",
+          "/Script/Engine.SoundWave": "S_",
+          "/Script/Engine.StaticMesh": "SM_",
+          "/Script/Engine.Texture2D": "T_"
+        }
+      },
+      "exceptions": [],
+      "baseline": "report-new-or-worsened",
+      "failThreshold": "error",
+      "helpUri": "docs/rules/naming-asset-prefix.md"
+    }
+  ]
+}
+

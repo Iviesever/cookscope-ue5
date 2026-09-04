@@ -2,7 +2,7 @@
 
 ## Current state
 
-The dedicated local repository is being initialized. All functional acceptance gates are fail-closed and no implementation claim exists yet.
+The dedicated local repository is on `feat/cookscope-0.1`. The initial audit's six High issues were remediated at `a27f210`; a first rerun's two High issues were fixed at `1f2b183`; the latest output-ownership High was fixed at `4eb0f34`. A full committed-source replay and fresh clean-source archive are green. The final independent read-only audit reports 0 Blocker and 0 High, so every local gate passes. GitHub repository/PR/tag/Release work remains user-blocked.
 
 ## Immutable constraints
 
@@ -16,5 +16,4 @@ The dedicated local repository is being initialized. All functional acceptance g
 
 ## Resume point
 
-Verify the initial contract files and goal hash, commit local `main`, create `feat/cookscope-0.1`, then begin the PACT-00 RED tests described in `task.md`.
-
+No local implementation or evidence action remains. Keep remote repository/PR/tag/Release gates BLOCKED and do not perform GitHub authentication or remote release work unless the user explicitly reverses that instruction.

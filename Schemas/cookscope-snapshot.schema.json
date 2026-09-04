@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Iviesever/cookscope-ue5/schemas/cookscope-snapshot.schema.json",
+  "title": "CookScope Asset Snapshot v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "provenance", "assets"],
+  "properties": {
+    "schema": {
+      "const": "cookscope.snapshot/1"
+    },
+    "provenance": {
+      "$ref": "#/$defs/provenance"
+    },
+    "assets": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/asset"
+      }
+    }
+  },
+  "$defs": {
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["engineVersion", "platform", "cookConfiguration", "sourceSha"],
+      "properties": {
+        "engineVersion": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "platform": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "cookConfiguration": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "sourceSha": {
+          "type": "string",
+          "pattern": "^[0-9A-Fa-f]{40}$"
+        }
+      }
+    },
+    "measurement": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": {
+            "kind": {
+              "const": "unavailable"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "bytes"],
+          "properties": {
+            "kind": {
+              "enum": ["source-disk", "package-disk", "estimated", "actual-cooked"]
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      ]
+    },
+    "dependency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target", "kind"],
+      "properties": {
+        "target": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "kind": {
+          "enum": ["hard", "soft", "manage", "searchable-name"]
+        }
+      }
+    },
+    "asset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "objectPath",
+        "packageName",
+        "assetClass",
+        "packagePath",
+        "primaryAssetId",
+        "diskSize",
+        "cookedSize",
+        "chunkIds",
+        "assetBundles",
+        "tags",
+        "dependencies",
+        "sourceProvenance"
+      ],
+      "properties": {
+        "objectPath": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "packageName": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "assetClass": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "packagePath": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "primaryAssetId": {
+          "oneOf": [
+            {"type": "null"},
+            {"$ref": "#/$defs/nonEmptyString"}
+          ]
+        },
+        "diskSize": {
+          "$ref": "#/$defs/measurement"
+        },
+        "cookedSize": {
+          "$ref": "#/$defs/measurement"
+        },
+        "chunkIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2147483647
+          }
+        },
+        "assetBundles": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/nonEmptyString"
+          }
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/dependency"
+          }
+        },
+        "sourceProvenance": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
+      }
+    }
+  }
+}
+

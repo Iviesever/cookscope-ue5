@@ -12,6 +12,7 @@ SampleProject/Binaries/
 SampleProject/Intermediate/
 SampleProject/Saved/
 SampleProject/DerivedDataCache/
+SampleProject/Build/Windows/FileOpenOrder/
 Plugins/CookScope/Binaries/
 Plugins/CookScope/Intermediate/
 *.VC.db
@@ -25,4 +26,3 @@ Plugins/CookScope/Intermediate/
 *.pak
 *.ucas
 *.utoc
-

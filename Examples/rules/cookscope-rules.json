@@ -1,0 +1,29 @@
+{
+  "schema": "cookscope.rules/1",
+  "rules": [
+    {
+      "id": "budget.asset-size",
+      "name": "Package size budget",
+      "description": "Flags matched assets whose package disk size exceeds the fixture budget.",
+      "severity": "error",
+      "scope": {
+        "include": ["/Game/**"],
+        "exclude": ["/Game/Developers/**"]
+      },
+      "parameters": {
+        "budgetBytes": 1048576,
+        "measurement": "package-disk"
+      },
+      "exceptions": [
+        {
+          "selector": "/Game/Fixtures/Allowed/**",
+          "reason": "Reviewed sample exception"
+        }
+      ],
+      "baseline": "report-new-or-worsened",
+      "failThreshold": "error",
+      "helpUri": "docs/rules/budget-asset-size.md"
+    }
+  ]
+}
+

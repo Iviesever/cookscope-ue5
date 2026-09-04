@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "build": {
+    "entry": "Tools/CookScopeCli/main.cpp",
+    "configuration": "release",
+    "architecture": "x64",
+    "standard": "20",
+    "type": "exe",
+    "runtime": "MD",
+    "subsystem": "console",
+    "output": "CookScopeCli",
+    "include_dirs": [
+      "Plugins/CookScope/Source/CookScopeCore/Public"
+    ],
+    "compiler_args": [
+      "/WX",
+      "/permissive-",
+      "/utf-8"
+    ]
+  },
+  "discovery": {
+    "enabled": true,
+    "exclude_dirs": [
+      "Artifacts",
+      "Plugins/CookScope/Source/CookScopeCommandlet",
+      "Plugins/CookScope/Source/CookScopeEditor",
+      "Plugins/CookScope/Source/CookScopeTests",
+      "SampleProject",
+      "Tests",
+      "docs",
+      "tasks"
+    ],
+    "extra_sources": [
+      "Plugins/CookScope/Source/CookScopeCore/Private/arguments.cpp",
+      "Plugins/CookScope/Source/CookScopeCore/Private/bootstrap.cpp",
+      "Plugins/CookScope/Source/CookScopeCore/Private/diff.cpp",
+      "Plugins/CookScope/Source/CookScopeCore/Private/graph.cpp",
+      "Plugins/CookScope/Source/CookScopeCore/Private/json.cpp",
+      "Plugins/CookScope/Source/CookScopeCore/Private/reports.cpp",
+      "Plugins/CookScope/Source/CookScopeCore/Private/rule_config.cpp",
+      "Plugins/CookScope/Source/CookScopeCore/Private/rules.cpp",
+      "Plugins/CookScope/Source/CookScopeCore/Private/snapshot.cpp"
+    ]
+  },
+  "profiles": {
+    "release": {
+      "build": {
+        "configuration": "release",
+        "runtime": "MD",
+        "defines": [
+          "NDEBUG"
+        ],
+        "compiler_args": [
+          "/O2",
+          "/Ob2"
+        ]
+      }
+    }
+  }
+}

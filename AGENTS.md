@@ -5,6 +5,7 @@ This repository is a source-only Unreal Engine 5.8 portfolio project. These inst
 ## Non-negotiable rules
 
 - Preserve `tasks/20260905-000547-cookscope-0.1/goal-objective.md` verbatim.
+- Preserve `tasks/20260905-000547-cookscope-0.1/goal-objective-continuation.md` verbatim.
 - Keep exactly one writing agent. A final independent audit agent is read-only.
 - Use RED -> GREEN -> REFACTOR for production behavior and record the failing and passing commands in `progress.md`.
 - Try MQB first for the pure C++ core and bounded capability probes. Use UBT or RunUAT only at the documented Unreal-specific boundary.
@@ -29,4 +30,3 @@ This repository is a source-only Unreal Engine 5.8 portfolio project. These inst
 ## Release boundary
 
 GitHub Release assets must remain empty. Only GitHub-generated source archives are allowed. Local plugin/sample/report packages belong in ignored `Artifacts/` and are referenced by SHA-256, size, source SHA, command, and outcome.
-

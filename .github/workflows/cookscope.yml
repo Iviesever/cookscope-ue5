@@ -1,0 +1,25 @@
+name: CookScope
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  windows-ue58:
+    runs-on: [self-hosted, Windows, X64, ue-5.8, mqb]
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Core and CLI contracts
+        shell: pwsh
+        run: ./scripts/Test.ps1
+      - name: UE Editor and Commandlet contracts
+        shell: pwsh
+        run: ./scripts/Test-Unreal.ps1 -EngineRoot $env:UE_ROOT
+      - name: Source-only boundary
+        shell: pwsh
+        run: |
+          $forbidden = git ls-files | Select-String -Pattern '(^|/)(Binaries|Intermediate|Saved|Artifacts)/|\.(dll|exe|pdb|pak|ucas|utoc|zip)$'
+          if ($forbidden) { $forbidden; throw 'Generated or binary files are tracked.' }

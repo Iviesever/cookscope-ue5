@@ -1,0 +1,500 @@
+#include "CookScopeEditorSession.h"
+
+#include "CookScopeAssetScanner.h"
+#include "CookScopeCookSnapshotReader.h"
+
+#include "cookscope/diff.h"
+#include "cookscope/reports.h"
+#include "cookscope/rule_config.h"
+#include "cookscope/rules.h"
+#include "cookscope/snapshot.h"
+
+#include "Async/Async.h"
+#include "HAL/CriticalSection.h"
+#include "HAL/FileManager.h"
+#include "Misc/FileHelper.h"
+#include "Misc/Paths.h"
+#include "Misc/ScopeLock.h"
+
+#include <algorithm>
+#include <optional>
+#include <span>
+#include <string>
+#include <string_view>
+#include <vector>
+
+namespace
+{
+	std::string EditorSessionToUtf8(const FString& Text)
+	{
+		FTCHARToUTF8 Converted(*Text);
+		return std::string(Converted.Get(), static_cast<std::size_t>(Converted.Length()));
+	}
+
+	FString EditorSessionFromUtf8(std::string_view Text)
+	{
+		FUTF8ToTCHAR Converted(Text.data(), static_cast<int32>(Text.size()));
+		return FString(Converted.Length(), Converted.Get());
+	}
+
+	FString EditorSeverity(cookscope::Severity Severity)
+	{
+		switch (Severity)
+		{
+		case cookscope::Severity::Note: return TEXT("note");
+		case cookscope::Severity::Warning: return TEXT("warning");
+		case cookscope::Severity::Error: return TEXT("error");
+		}
+		return TEXT("error");
+	}
+
+	FString EditorDependencyKind(cookscope::DependencyKind Kind)
+	{
+		switch (Kind)
+		{
+		case cookscope::DependencyKind::Hard: return TEXT("Hard");
+		case cookscope::DependencyKind::Soft: return TEXT("Soft");
+		case cookscope::DependencyKind::Manage: return TEXT("Manage");
+		case cookscope::DependencyKind::SearchableName: return TEXT("Searchable Name");
+		}
+		return TEXT("Unknown");
+	}
+
+	FString EditorBaselineState(cookscope::FindingBaselineState State)
+	{
+		switch (State)
+		{
+		case cookscope::FindingBaselineState::NotApplicable: return TEXT("Not applicable");
+		case cookscope::FindingBaselineState::New: return TEXT("New");
+		case cookscope::FindingBaselineState::Existing: return TEXT("Existing");
+		case cookscope::FindingBaselineState::Worsened: return TEXT("Worsened");
+		}
+		return TEXT("Not applicable");
+	}
+
+	FString EditorAssetChangeKind(cookscope::AssetChangeKind Kind)
+	{
+		switch (Kind)
+		{
+		case cookscope::AssetChangeKind::Added: return TEXT("Added");
+		case cookscope::AssetChangeKind::Removed: return TEXT("Removed");
+		case cookscope::AssetChangeKind::Modified: return TEXT("Modified");
+		case cookscope::AssetChangeKind::Renamed: return TEXT("Renamed");
+		}
+		return TEXT("Modified");
+	}
+
+	bool SaveEditorReport(const FString& Path, const std::string& Text)
+	{
+		return FFileHelper::SaveStringToFile(
+			EditorSessionFromUtf8(Text),
+			*Path,
+			FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
+	}
+}
+
+class FCookScopeEditorSession::FImpl
+{
+public:
+	mutable FCriticalSection Mutex;
+	TFuture<void> Worker;
+	ECookScopeEditorSessionState State = ECookScopeEditorSessionState::Idle;
+	float Progress = 0.0f;
+	FString Status = TEXT("Ready");
+	bool CancelRequested = false;
+	uint64 Generation = 0;
+	cookscope::Snapshot Snapshot;
+	cookscope::RuleConfig Config;
+	cookscope::AnalysisResult Analysis;
+	cookscope::DependencyGraph Graph;
+	std::optional<cookscope::SnapshotDiffResult> Diff;
+	cookscope::ReportSet Reports;
+};
+
+FCookScopeEditorSession::FCookScopeEditorSession()
+	: Impl(MakeUnique<FImpl>())
+{
+}
+
+FCookScopeEditorSession::~FCookScopeEditorSession()
+{
+	Shutdown();
+}
+
+bool FCookScopeEditorSession::StartScan(const FCookScopeEditorScanSettings& Settings)
+{
+	{
+		FScopeLock Lock(&Impl->Mutex);
+		if (Impl->State == ECookScopeEditorSessionState::Scanning) return false;
+	}
+	if (Impl->Worker.IsValid()) Impl->Worker.Wait();
+	{
+		FScopeLock Lock(&Impl->Mutex);
+		Impl->CancelRequested = false;
+		Impl->State = ECookScopeEditorSessionState::Scanning;
+		Impl->Progress = 0.05f;
+		Impl->Status = TEXT("Loading rules");
+		++Impl->Generation;
+	}
+
+	FString ConfigText;
+	const int64 ConfigBytes = IFileManager::Get().FileSize(*Settings.ConfigPath);
+	if (ConfigBytes < 0 || ConfigBytes > Settings.MaximumConfigBytes ||
+		!FFileHelper::LoadFileToString(ConfigText, *Settings.ConfigPath))
+	{
+		FScopeLock Lock(&Impl->Mutex);
+		Impl->State = ECookScopeEditorSessionState::Failed;
+		Impl->Status = FString::Printf(TEXT("Unable to read config: %s"), *Settings.ConfigPath);
+		return false;
+	}
+	const cookscope::RuleConfigParseResult Config = cookscope::ParseRuleConfig(EditorSessionToUtf8(ConfigText));
+	if (!Config.ok)
+	{
+		FScopeLock Lock(&Impl->Mutex);
+		Impl->State = ECookScopeEditorSessionState::Failed;
+		Impl->Status = FString::Printf(TEXT("Invalid rules at %s"), *EditorSessionFromUtf8(Config.error.path));
+		return false;
+	}
+
+	{
+		FScopeLock Lock(&Impl->Mutex);
+		Impl->Progress = 0.2f;
+		Impl->Status = TEXT("Scanning Asset Registry");
+	}
+	FCookScopeScanOptions ScanOptions;
+	ScanOptions.bDiscoverOnDisk = false;
+	ScanOptions.bRefreshAssetManager = false;
+	ScanOptions.MaximumAssets = Settings.MaximumAssets;
+	ScanOptions.MaximumDependencies = Settings.MaximumDependencies;
+	FCookScopeScanResult Scan = FCookScopeAssetScanner::ScanPath(Settings.Scope, Settings.SourceSha, ScanOptions);
+	if (!Scan.bSuccess)
+	{
+		FScopeLock Lock(&Impl->Mutex);
+		Impl->State = ECookScopeEditorSessionState::Failed;
+		Impl->Status = Scan.Error;
+		return false;
+	}
+	if (!Settings.CookRegistryPath.IsEmpty())
+	{
+		const int64 RegistryBytes = IFileManager::Get().FileSize(*Settings.CookRegistryPath);
+		if (RegistryBytes < 0 || RegistryBytes > Settings.MaximumCookRegistryBytes)
+		{
+			FScopeLock Lock(&Impl->Mutex);
+			Impl->State = ECookScopeEditorSessionState::Failed;
+			Impl->Status = TEXT("Cook Registry is missing or exceeds the configured input limit");
+			return false;
+		}
+		const FCookScopeCookMergeResult Merge = FCookScopeCookSnapshotReader::MergeDevelopmentRegistry(
+			Settings.CookRegistryPath,
+			Settings.CookPlatform,
+			Settings.CookConfiguration,
+			Scan.Snapshot);
+		if (!Merge.bSuccess)
+		{
+			FScopeLock Lock(&Impl->Mutex);
+			Impl->State = ECookScopeEditorSessionState::Failed;
+			Impl->Status = Merge.Error;
+			return false;
+		}
+		Scan.Snapshot = Merge.Snapshot;
+	}
+
+	std::optional<cookscope::Snapshot> Baseline;
+	if (!Settings.BaselinePath.IsEmpty())
+	{
+		FString BaselineText;
+		const int64 BaselineBytes = IFileManager::Get().FileSize(*Settings.BaselinePath);
+		if (BaselineBytes < 0 || BaselineBytes > Settings.MaximumBaselineBytes ||
+			!FFileHelper::LoadFileToString(BaselineText, *Settings.BaselinePath))
+		{
+			FScopeLock Lock(&Impl->Mutex);
+			Impl->State = ECookScopeEditorSessionState::Failed;
+			Impl->Status = TEXT("Unable to read baseline");
+			return false;
+		}
+		const cookscope::SnapshotParseResult ParsedBaseline = cookscope::ParseSnapshot(EditorSessionToUtf8(BaselineText));
+		if (!ParsedBaseline.ok)
+		{
+			FScopeLock Lock(&Impl->Mutex);
+			Impl->State = ECookScopeEditorSessionState::Failed;
+			Impl->Status = TEXT("Baseline is invalid");
+			return false;
+		}
+		Baseline = ParsedBaseline.value;
+	}
+
+	uint64 Generation = 0;
+	{
+		FScopeLock Lock(&Impl->Mutex);
+		Generation = Impl->Generation;
+	}
+	cookscope::Snapshot Snapshot = std::move(Scan.Snapshot);
+	cookscope::RuleConfig Rules = Config.value;
+	Impl->Worker = Async(EAsyncExecution::ThreadPool, [this, Generation, Snapshot = std::move(Snapshot), Rules = std::move(Rules), Baseline = std::move(Baseline)]() mutable {
+		{
+			FScopeLock Lock(&Impl->Mutex);
+			if (Impl->CancelRequested || Generation != Impl->Generation) return;
+			Impl->Progress = 0.55f;
+			Impl->Status = TEXT("Evaluating shared rules");
+		}
+		std::optional<cookscope::SnapshotDiffResult> Diff;
+		if (Baseline)
+		{
+			Diff = cookscope::DiffSnapshots(*Baseline, Snapshot);
+			if (!Diff->comparable)
+			{
+				FScopeLock Lock(&Impl->Mutex);
+				if (!Impl->CancelRequested && Generation == Impl->Generation)
+				{
+					Impl->State = ECookScopeEditorSessionState::Failed;
+					Impl->Status = EditorSessionFromUtf8(Diff->error);
+				}
+				return;
+			}
+		}
+		cookscope::AnalysisResult Analysis = cookscope::Evaluate(Snapshot, Rules, Baseline ? &*Baseline : nullptr);
+		if (Baseline && Diff)
+		{
+			const cookscope::AnalysisResult Before = cookscope::Evaluate(*Baseline, Rules);
+			const cookscope::AnalysisResult After = cookscope::Evaluate(Snapshot, Rules);
+			cookscope::AppendFindingChanges(Before, After, *Diff);
+		}
+		const cookscope::GraphBuildResult Graph = cookscope::BuildDependencyGraph(Snapshot, cookscope::OperationLimits{});
+		if (Graph.state != cookscope::OperationState::Complete)
+		{
+			FScopeLock Lock(&Impl->Mutex);
+			if (!Impl->CancelRequested && Generation == Impl->Generation)
+			{
+				Impl->State = ECookScopeEditorSessionState::Failed;
+				Impl->Status = TEXT("Dependency graph exceeded limits");
+			}
+			return;
+		}
+		cookscope::ReportSet Reports = cookscope::RenderReports(Snapshot, Rules, Analysis, Diff ? &*Diff : nullptr);
+		FScopeLock Lock(&Impl->Mutex);
+		if (Impl->CancelRequested || Generation != Impl->Generation) return;
+		Impl->Snapshot = std::move(Snapshot);
+		Impl->Config = std::move(Rules);
+		Impl->Analysis = std::move(Analysis);
+		Impl->Graph = Graph.graph;
+		Impl->Diff = std::move(Diff);
+		Impl->Reports = std::move(Reports);
+		Impl->Progress = 1.0f;
+		Impl->Status = TEXT("Scan complete");
+		Impl->State = ECookScopeEditorSessionState::Complete;
+	});
+	return true;
+}
+
+void FCookScopeEditorSession::Cancel()
+{
+	FScopeLock Lock(&Impl->Mutex);
+	Impl->CancelRequested = true;
+	++Impl->Generation;
+	if (Impl->State == ECookScopeEditorSessionState::Scanning)
+	{
+		Impl->State = ECookScopeEditorSessionState::Cancelled;
+		Impl->Status = TEXT("Scan cancelled");
+	}
+}
+
+void FCookScopeEditorSession::Shutdown()
+{
+	Cancel();
+	if (Impl->Worker.IsValid()) Impl->Worker.Wait();
+	FScopeLock Lock(&Impl->Mutex);
+	Impl->Snapshot = {};
+	Impl->Config = {};
+	Impl->Analysis = {};
+	Impl->Graph = {};
+	Impl->Diff.reset();
+	Impl->Reports = {};
+	Impl->Progress = 0.0f;
+	Impl->Status = TEXT("Ready");
+	Impl->State = ECookScopeEditorSessionState::Idle;
+}
+
+ECookScopeEditorSessionState FCookScopeEditorSession::GetState() const
+{
+	FScopeLock Lock(&Impl->Mutex);
+	return Impl->State;
+}
+
+float FCookScopeEditorSession::GetProgress() const
+{
+	FScopeLock Lock(&Impl->Mutex);
+	return Impl->Progress;
+}
+
+FString FCookScopeEditorSession::GetStatusText() const
+{
+	FScopeLock Lock(&Impl->Mutex);
+	return Impl->Status;
+}
+
+TArray<FCookScopeEditorFindingItem> FCookScopeEditorSession::GetFilteredFindings(const FCookScopeEditorFilter& Filter) const
+{
+	FScopeLock Lock(&Impl->Mutex);
+	TArray<FCookScopeEditorFindingItem> Items;
+	for (const cookscope::Finding& Finding : Impl->Analysis.findings)
+	{
+		FString AssetClass;
+		const auto Asset = std::find_if(Impl->Snapshot.assets.begin(), Impl->Snapshot.assets.end(), [&](const cookscope::AssetRecord& Item) {
+			return Item.objectPath == Finding.assetPath;
+		});
+		if (Asset != Impl->Snapshot.assets.end()) AssetClass = EditorSessionFromUtf8(Asset->assetClass);
+		const FString Severity = EditorSeverity(Finding.severity);
+		const FString RuleId = EditorSessionFromUtf8(Finding.ruleId);
+		const FString AssetPath = EditorSessionFromUtf8(Finding.assetPath);
+		if (!Filter.Severity.IsEmpty() && !Severity.Equals(Filter.Severity, ESearchCase::IgnoreCase)) continue;
+		if (!Filter.RuleId.IsEmpty() && !RuleId.Contains(Filter.RuleId, ESearchCase::IgnoreCase)) continue;
+		if (!Filter.AssetClass.IsEmpty() && !AssetClass.Equals(Filter.AssetClass, ESearchCase::IgnoreCase)) continue;
+		if (!Filter.PathSearch.IsEmpty() && !AssetPath.Contains(Filter.PathSearch, ESearchCase::IgnoreCase)) continue;
+		Items.Add({Severity, RuleId, AssetPath, AssetClass, EditorSessionFromUtf8(Finding.message)});
+	}
+	return Items;
+}
+
+cookscope::WhyCookedResult FCookScopeEditorSession::ExplainWhyCooked(
+	const TArray<FString>& Roots,
+	const FString& Target) const
+{
+	FScopeLock Lock(&Impl->Mutex);
+	std::vector<std::string> Storage;
+	Storage.reserve(Roots.Num());
+	for (const FString& Root : Roots) Storage.push_back(EditorSessionToUtf8(Root));
+	std::vector<std::string_view> Views;
+	Views.reserve(Storage.size());
+	for (const std::string& Root : Storage) Views.emplace_back(Root);
+	return cookscope::ExplainWhyCooked(
+		Impl->Graph,
+		std::span<const std::string_view>(Views),
+		EditorSessionToUtf8(Target),
+		cookscope::DependencyMask::All(),
+		cookscope::OperationLimits{});
+}
+
+FString FCookScopeEditorSession::DescribeFinding(const FCookScopeEditorFindingItem& Item) const
+{
+	FScopeLock Lock(&Impl->Mutex);
+	const std::string RuleId = EditorSessionToUtf8(Item.RuleId);
+	const std::string AssetPath = EditorSessionToUtf8(Item.AssetPath);
+	const auto Finding = std::find_if(Impl->Analysis.findings.begin(), Impl->Analysis.findings.end(), [&](const cookscope::Finding& Candidate) {
+		return Candidate.ruleId == RuleId && Candidate.assetPath == AssetPath;
+	});
+	if (Finding == Impl->Analysis.findings.end()) return TEXT("Finding not found");
+
+	FString Details = FString::Printf(
+		TEXT("%s\nSeverity %s\nRule %s\nBaseline state %s\n%s"),
+		*Item.AssetPath,
+		*Item.Severity,
+		*Item.RuleId,
+		*EditorBaselineState(Finding->baselineState),
+		*EditorSessionFromUtf8(Finding->message));
+	if (!Finding->relatedAsset.empty()) Details += FString::Printf(TEXT("\nRelated asset %s"), *EditorSessionFromUtf8(Finding->relatedAsset));
+	if (Finding->dependencyKind) Details += FString::Printf(TEXT("\nDependency kind %s"), *EditorDependencyKind(*Finding->dependencyKind));
+	if (Finding->observedBytes) Details += FString::Printf(TEXT("\nObserved %llu bytes"), static_cast<unsigned long long>(*Finding->observedBytes));
+	if (Finding->budgetBytes) Details += FString::Printf(TEXT("\nBudget %llu bytes"), static_cast<unsigned long long>(*Finding->budgetBytes));
+	if (!Finding->metric.empty()) Details += FString::Printf(TEXT("\nMetric %s"), *EditorSessionFromUtf8(Finding->metric));
+	if (Finding->observedValue) Details += FString::Printf(TEXT("\nObserved %llu"), static_cast<unsigned long long>(*Finding->observedValue));
+	if (Finding->limitValue) Details += FString::Printf(TEXT("\nLimit %llu"), static_cast<unsigned long long>(*Finding->limitValue));
+	if (!Finding->observedText.empty()) Details += FString::Printf(TEXT("\nObserved %s"), *EditorSessionFromUtf8(Finding->observedText));
+	if (!Finding->expectedText.empty()) Details += FString::Printf(TEXT("\nExpected %s"), *EditorSessionFromUtf8(Finding->expectedText));
+	if (!Finding->dependencyPath.empty())
+	{
+		Details += TEXT("\nDependency chain");
+		for (const cookscope::DependencyStep& Step : Finding->dependencyPath)
+		{
+			Details += FString::Printf(
+				TEXT("\n  %s -> %s (%s)"),
+				*EditorSessionFromUtf8(Step.source),
+				*EditorSessionFromUtf8(Step.target),
+				*EditorDependencyKind(Step.kind));
+		}
+	}
+	return Details;
+}
+
+FString FCookScopeEditorSession::DescribeAsset(const FString& AssetPath) const
+{
+	FScopeLock Lock(&Impl->Mutex);
+	const std::string Path = EditorSessionToUtf8(AssetPath);
+	const auto Asset = std::find_if(Impl->Snapshot.assets.begin(), Impl->Snapshot.assets.end(), [&](const cookscope::AssetRecord& Item) {
+		return Item.objectPath == Path;
+	});
+	if (Asset == Impl->Snapshot.assets.end()) return TEXT("Asset not found");
+	FString Details = FString::Printf(TEXT("%s\nClass %s"), *AssetPath, *EditorSessionFromUtf8(Asset->assetClass));
+	if (Asset->primaryAssetId) Details += FString::Printf(TEXT("\nPrimary Asset %s"), *EditorSessionFromUtf8(*Asset->primaryAssetId));
+	for (const int32 Chunk : Asset->chunkIds) Details += FString::Printf(TEXT("\nChunk %d"), Chunk);
+	for (const std::string& Bundle : Asset->assetBundles) Details += FString::Printf(TEXT("\nBundle %s"), *EditorSessionFromUtf8(Bundle));
+	if (Asset->cookedSize.kind == cookscope::MeasurementKind::ActualCooked && Asset->cookedSize.bytes)
+	{
+		Details += FString::Printf(TEXT("\nActual Cook %llu bytes"), static_cast<unsigned long long>(*Asset->cookedSize.bytes));
+	}
+	else
+	{
+		Details += TEXT("\nActual Cook unavailable");
+	}
+	Details += FString::Printf(TEXT("\nDependencies %d"), static_cast<int32>(Asset->dependencies.size()));
+	for (const cookscope::DependencyEdge& Edge : Asset->dependencies)
+	{
+		Details += FString::Printf(
+			TEXT("\n  %s -> %s"),
+			*EditorDependencyKind(Edge.kind),
+			*EditorSessionFromUtf8(Edge.target));
+	}
+	return Details;
+}
+
+FString FCookScopeEditorSession::GetComparisonSummary() const
+{
+	FScopeLock Lock(&Impl->Mutex);
+	if (!Impl->Diff) return TEXT("No baseline selected. Current scan is the candidate snapshot.");
+	const cookscope::SnapshotDiffResult& Diff = *Impl->Diff;
+	FString Summary = FString::Printf(
+		TEXT("Baseline / candidate comparison\nAsset changes %d | Dependency changes %d | Finding changes %d | Size changes %d"),
+		static_cast<int32>(Diff.assetChanges.size()),
+		static_cast<int32>(Diff.edgeChanges.size()),
+		static_cast<int32>(Diff.findingChanges.size()),
+		static_cast<int32>(Diff.sizeChanges.size()));
+	for (const cookscope::AssetChange& Change : Diff.assetChanges)
+	{
+		const FString BaselinePath = EditorSessionFromUtf8(Change.baselinePath);
+		const FString CandidatePath = EditorSessionFromUtf8(Change.candidatePath);
+		Summary += FString::Printf(
+			TEXT("\n%s: %s -> %s"),
+			*EditorAssetChangeKind(Change.kind),
+			BaselinePath.IsEmpty() ? TEXT("—") : *BaselinePath,
+			CandidatePath.IsEmpty() ? TEXT("—") : *CandidatePath);
+		if (!Change.fields.empty())
+		{
+			Summary += TEXT(" [");
+			for (std::size_t Index = 0; Index < Change.fields.size(); ++Index)
+			{
+				if (Index != 0) Summary += TEXT(", ");
+				Summary += EditorSessionFromUtf8(Change.fields[Index]);
+			}
+			Summary += TEXT("]");
+		}
+	}
+	for (const cookscope::CookedSizeChange& Change : Diff.sizeChanges)
+	{
+		Summary += FString::Printf(
+			TEXT("\n%s: %llu -> %llu bytes (%+lld)"),
+			*EditorSessionFromUtf8(Change.assetPath),
+			static_cast<unsigned long long>(Change.beforeBytes),
+			static_cast<unsigned long long>(Change.afterBytes),
+			static_cast<long long>(Change.deltaBytes));
+	}
+	return Summary;
+}
+
+bool FCookScopeEditorSession::ExportReports(const FString& OutputDirectory) const
+{
+	FScopeLock Lock(&Impl->Mutex);
+	if (Impl->State != ECookScopeEditorSessionState::Complete || !IFileManager::Get().MakeDirectory(*OutputDirectory, true)) return false;
+	return SaveEditorReport(OutputDirectory / TEXT("cookscope.json"), Impl->Reports.json) &&
+		SaveEditorReport(OutputDirectory / TEXT("cookscope.sarif"), Impl->Reports.sarif) &&
+		SaveEditorReport(OutputDirectory / TEXT("cookscope.junit.xml"), Impl->Reports.junit) &&
+		SaveEditorReport(OutputDirectory / TEXT("cookscope.html"), Impl->Reports.html);
+}
