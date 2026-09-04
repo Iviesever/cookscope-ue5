@@ -2,7 +2,7 @@
 
 ## Current state
 
-The dedicated local repository is being initialized. All functional acceptance gates are fail-closed and no implementation claim exists yet.
+The dedicated local repository has a verified contract baseline at `2bede4a50f47ee332e11f2dfbb90beb596c9dc0e`. Work is on `feat/cookscope-0.1`; the first pure-core bootstrap contract is GREEN under MQB, while all UE and broader functional gates remain fail-closed.
 
 ## Immutable constraints
 
@@ -16,5 +16,4 @@ The dedicated local repository is being initialized. All functional acceptance g
 
 ## Resume point
 
-Verify the initial contract files and goal hash, commit local `main`, create `feat/cookscope-0.1`, then begin the PACT-00 RED tests described in `task.md`.
-
+Continue PACT-00 from the strict standalone helper argument RED test, then add the checked-in MQB probe and UE plugin/sample RED scaffold described in `task.md`.

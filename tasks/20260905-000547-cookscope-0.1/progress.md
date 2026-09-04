@@ -18,13 +18,24 @@
 Objective: Establish the local main contract baseline, then begin PACT-00 on feat/cookscope-0.1.
 Gap: No source baseline commit, plugin, sample, test, build, Editor load, or commandlet exists yet.
 Scope: Planning/evidence files first; then the smallest MQB and UE smoke RED tests.
-Done when: Local main has a clean baseline commit and the feature branch begins with observed PACT-00 RED evidence.
+Done when: PACT-00 has a reproducible MQB core/helper build, real UE plugin load, Editor tab, commandlet JSON, stable exit-code evidence, and a bounded MQB/UE capability matrix.
 ```
+
+## 2026-09-05 — Local baseline and PACT-00 core contract
+
+- Local `main` baseline commit: `2bede4a50f47ee332e11f2dfbb90beb596c9dc0e`.
+- Feature branch: `feat/cookscope-0.1`, created directly from that baseline; no implementation was written on `main`.
+- RED command: `mqb run Tests/Core/BootstrapContractTests.cpp --no-discover -I Source/Core/Public --std 20 --release -o CookScopeBootstrapContractTests`.
+- RED result: exit `1`; MSVC `C1083` because `cookscope/bootstrap.h` did not exist. This was the intended missing-contract failure.
+- GREEN/refactor command: `mqb run Tests/Core/BootstrapContractTests.cpp Plugins/CookScope/Source/CookScopeCore/Private/bootstrap.cpp -I Plugins/CookScope/Source/CookScopeCore/Public --std 20 --release -o CookScopeBootstrapContractTests --timings=json`.
+- Clean-after-layout-change result: exit `0`; 2 compile misses, 1 link miss, test printed `PASS: bootstrap status, exit code, and canonical JSON contract`.
+- Immediate identical no-op result: exit `0`; 2 compile hits, 1 link hit, 0 misses, test passed; total reported MQB time 23.006 ms.
+- Local ignored artifact: `.mqb/bin/CookScopeBootstrapContractTests.exe`, 19,968 bytes, SHA-256 `D7C64C8C092AA9855B65177155D079843797FC4D220B49D2903693C1F77C7130`.
+- Proven behavior is intentionally narrow: five status-to-exit mappings and byte-stable bootstrap JSON. Full result Schema, rule, graph, UE commandlet, and Editor behavior remain unimplemented.
 
 ## Next actions
 
-1. Copy the human goal verbatim and verify its hash.
-2. Self-review authored plans for deferred work markers, contradictions, and requirement coverage.
-3. Commit the clean local `main` baseline.
-4. Create `feat/cookscope-0.1` from that baseline.
-5. Execute Task 1 with observed RED tests before production code.
+1. Add strict standalone helper argument tests before its implementation.
+2. Run a bounded MQB clean/no-op/failure/artifact-identity probe through checked-in scripts.
+3. Scaffold the UE plugin/sample test target and observe a controlled UBT RED failure.
+4. Implement the minimal modules, Editor tab, and commandlet to GREEN.
