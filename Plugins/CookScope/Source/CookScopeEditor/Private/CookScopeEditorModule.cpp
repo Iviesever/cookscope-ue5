@@ -3,6 +3,7 @@
 #include "CookScopeEditorSession.h"
 #include "SCookScopePanel.h"
 
+#include "Engine/AssetManager.h"
 #include "Framework/Docking/TabManager.h"
 #include "Widgets/Docking/SDockTab.h"
 
@@ -25,6 +26,8 @@ TSharedPtr<SDockTab> FCookScopeEditorModule::InvokeTab()
 
 void FCookScopeEditorModule::StartupModule()
 {
+	UAssetManager::Get().UpdateManagementDatabase(
+		EUpdateManagementDatabaseFlags::BuildChunkMap | EUpdateManagementDatabaseFlags::ForceRefresh);
 	Session = MakeShared<FCookScopeEditorSession>();
 	FGlobalTabmanager::Get()->RegisterNomadTabSpawner(
 		CookScopeTabName,

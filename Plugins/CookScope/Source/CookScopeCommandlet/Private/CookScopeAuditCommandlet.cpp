@@ -139,7 +139,7 @@ namespace
 
 		FCookScopeScanOptions ScanOptions;
 		ScanOptions.bDiscoverOnDisk = false;
-		ScanOptions.bRefreshAssetManager = false;
+		ScanOptions.bRefreshAssetManager = true;
 		ScanOptions.MaximumAssets = 100000;
 		ScanOptions.MaximumDependencies = 500000;
 		ScanOptions.ShouldCancel = [&]() {
@@ -236,8 +236,21 @@ namespace
 			return cookscope::CommandletExitCode(cookscope::AuditStatus::InternalError);
 		}
 		const std::string SnapshotJson = cookscope::WriteCanonicalSnapshot(Candidate);
-		if (!SaveUtf8Atomic(OutputDirectory / TEXT("cookscope.json"), Reports.json) ||
-			!SaveUtf8Atomic(OutputDirectory / TEXT("cookscope.sarif"), Reports.sarif) ||
+		if (!SaveUtf8Atomic(OutputDirectory / TEXT("cookscope.json"), Reports.json))
+		{
+			UE_LOG(LogCookScopeCommandlet, Error, TEXT("Unable to write canonical JSON under %s"), *OutputDirectory);
+			return cookscope::CommandletExitCode(cookscope::AuditStatus::InternalError);
+		}
+#if WITH_DEV_AUTOMATION_TESTS
+		const FString PublishDelayText = FPlatformMisc::GetEnvironmentVariable(TEXT("COOKSCOPE_TEST_DELAY_AFTER_FIRST_REPORT_MS"));
+		const int32 PublishDelayMs = FCString::Atoi(*PublishDelayText);
+		if (PublishDelayMs > 0 && PublishDelayMs <= 60000)
+		{
+			FPlatformProcess::SleepNoStats(static_cast<float>(PublishDelayMs) / 1000.0f);
+		}
+#endif
+		if (DeadlineExpired(TEXT("report publication"))) return cookscope::CommandletExitCode(cookscope::AuditStatus::Cancelled);
+		if (!SaveUtf8Atomic(OutputDirectory / TEXT("cookscope.sarif"), Reports.sarif) ||
 			!SaveUtf8Atomic(OutputDirectory / TEXT("cookscope.junit.xml"), Reports.junit) ||
 			!SaveUtf8Atomic(OutputDirectory / TEXT("cookscope.html"), Reports.html) ||
 			!SaveUtf8Atomic(OutputDirectory / TEXT("cookscope.snapshot.json"), SnapshotJson))

@@ -100,6 +100,18 @@ namespace
 			}
 		}
 
+		TArray<FName> ManagedPackages;
+		if (AssetManager.GetManagedPackageList(PrimaryId, ManagedPackages))
+		{
+			for (const FName PackageName : ManagedPackages)
+			{
+				Output.dependencies.push_back({
+					ResolveIdentifier(FAssetIdentifier(PackageName), Registry, AssetManager),
+					cookscope::DependencyKind::Manage});
+			}
+		}
+		AddRegistryDependencies(FAssetIdentifier(PrimaryId), Registry, AssetManager, Output.dependencies);
+
 	}
 
 	void SetNormalizedTag(cookscope::AssetRecord& Record, const char* Name, const FString& Value)

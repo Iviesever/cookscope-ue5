@@ -117,10 +117,15 @@ if (-not (Test-Path -LiteralPath $wrapper -PathType Leaf)) {
   throw "Strict CI audit wrapper is missing: $wrapper"
 }
 $hardTimeoutOutput = Join-Path $runRoot 'hard-timeout'
-$previousHardDelay = $env:COOKSCOPE_TEST_DELAY_MS
+$expectedSentinels = @('cookscope.json', 'cookscope.sarif', 'cookscope.junit.xml', 'cookscope.html', 'cookscope.snapshot.json')
+New-Item -ItemType Directory -Path $hardTimeoutOutput -Force | Out-Null
+foreach ($name in $expectedSentinels) {
+  [System.IO.File]::WriteAllText((Join-Path $hardTimeoutOutput $name), "OLD:$name`n")
+}
+$previousHardDelay = $env:COOKSCOPE_TEST_DELAY_AFTER_FIRST_REPORT_MS
 $hardStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 try {
-  $env:COOKSCOPE_TEST_DELAY_MS = '10000'
+  $env:COOKSCOPE_TEST_DELAY_AFTER_FIRST_REPORT_MS = '30000'
   & pwsh -NoLogo -NoProfile -File $wrapper `
     -EngineRoot $EngineRoot `
     -Project $project `
@@ -128,26 +133,30 @@ try {
     -Output $hardTimeoutOutput `
     -SourceSha $sourceSha `
     -Scope '/Game/CookScopeFixtures' `
-    -TimeoutSeconds 1 `
+    -TimeoutSeconds 15 `
     -FailOnViolation 'false'
   $hardTimeoutExit = $LASTEXITCODE
 }
 finally {
   $hardStopwatch.Stop()
   if ($null -eq $previousHardDelay) {
-    Remove-Item Env:COOKSCOPE_TEST_DELAY_MS -ErrorAction SilentlyContinue
+    Remove-Item Env:COOKSCOPE_TEST_DELAY_AFTER_FIRST_REPORT_MS -ErrorAction SilentlyContinue
   }
   else {
-    $env:COOKSCOPE_TEST_DELAY_MS = $previousHardDelay
+    $env:COOKSCOPE_TEST_DELAY_AFTER_FIRST_REPORT_MS = $previousHardDelay
   }
 }
-if ($hardTimeoutExit -ne 5 -or $hardStopwatch.Elapsed.TotalSeconds -ge 5.0) {
-  throw "Expected strict wrapper exit 5 in under 5 seconds, got exit $hardTimeoutExit in $($hardStopwatch.Elapsed.TotalSeconds)s"
+if ($hardTimeoutExit -ne 5 -or $hardStopwatch.Elapsed.TotalSeconds -ge 25.0) {
+  throw "Expected strict wrapper exit 5 in under 25 seconds, got exit $hardTimeoutExit in $($hardStopwatch.Elapsed.TotalSeconds)s"
 }
-if (Test-Path -LiteralPath $hardTimeoutOutput) {
-  if (@(Get-ChildItem -LiteralPath $hardTimeoutOutput -File -ErrorAction SilentlyContinue).Count -ne 0) {
-    throw 'Hard-timed-out audit must not publish report files'
+foreach ($name in $expectedSentinels) {
+  if ([System.IO.File]::ReadAllText((Join-Path $hardTimeoutOutput $name)) -ne "OLD:$name`n") {
+    throw "Hard timeout replaced part of the previously published report set: $name"
   }
+}
+$stagingPattern = (Split-Path -Leaf $hardTimeoutOutput) + '.staging-*'
+if (@(Get-ChildItem -LiteralPath (Split-Path -Parent $hardTimeoutOutput) -Directory -Filter $stagingPattern).Count -ne 0) {
+  throw 'Hard timeout left an unpublished staging directory'
 }
 
 [pscustomobject]@{

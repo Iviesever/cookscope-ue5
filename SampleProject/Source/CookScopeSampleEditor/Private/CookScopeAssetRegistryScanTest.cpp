@@ -53,7 +53,7 @@ bool FCookScopeAssetRegistryScanTest::RunTest(const FString& Parameters)
 {
 	(void)Parameters;
 	const FCookScopeScanResult Result = FCookScopeAssetScanner::ScanPath(
-		TEXT("/Game/CookScopeFixtures"),
+		TEXT("/Game"),
 		TEXT("0000000000000000000000000000000000000000"));
 	TestTrue(TEXT("Real Asset Registry scan succeeds"), Result.bSuccess);
 	if (!Result.bSuccess)
@@ -61,19 +61,21 @@ bool FCookScopeAssetRegistryScanTest::RunTest(const FString& Parameters)
 		AddError(Result.Error);
 		return false;
 	}
-	TestEqual(TEXT("All deterministic fixtures are scanned"), static_cast<int32>(Result.Snapshot.assets.size()), 9);
+	TestEqual(TEXT("All deterministic fixtures are scanned"), static_cast<int32>(Result.Snapshot.assets.size()), 20);
 
 	const cookscope::AssetRecord* Target = FindAsset(Result.Snapshot, "/Game/CookScopeFixtures/Targets/DA_Target.DA_Target");
 	const cookscope::AssetRecord* Hard = FindAsset(Result.Snapshot, "/Game/CookScopeFixtures/Sources/DA_Hard.DA_Hard");
 	const cookscope::AssetRecord* Soft = FindAsset(Result.Snapshot, "/Game/CookScopeFixtures/Sources/DA_Soft.DA_Soft");
 	const cookscope::AssetRecord* Searchable = FindAsset(Result.Snapshot, "/Game/CookScopeFixtures/Sources/DA_Searchable.DA_Searchable");
 	const cookscope::AssetRecord* Primary = FindAsset(Result.Snapshot, "/Game/CookScopeFixtures/Primary/DA_Primary.DA_Primary");
+	const cookscope::AssetRecord* Runtime = FindAsset(Result.Snapshot, "/Game/CookScopeP0Fixtures/Runtime/DA_Runtime.DA_Runtime");
 	TestNotNull(TEXT("Target fixture is present"), Target);
 	TestNotNull(TEXT("Hard fixture is present"), Hard);
 	TestNotNull(TEXT("Soft fixture is present"), Soft);
 	TestNotNull(TEXT("Searchable fixture is present"), Searchable);
 	TestNotNull(TEXT("Primary fixture is present"), Primary);
-	if (!Target || !Hard || !Soft || !Searchable || !Primary)
+	TestNotNull(TEXT("Non-Bundle managed Runtime fixture is present"), Runtime);
+	if (!Target || !Hard || !Soft || !Searchable || !Primary || !Runtime)
 	{
 		return false;
 	}
@@ -95,6 +97,8 @@ bool FCookScopeAssetRegistryScanTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Manage dependency remains typed"), HasEdge(*Primary, Target->objectPath, cookscope::DependencyKind::Manage));
 	TestEqual(TEXT("Manage edge identity is de-duplicated across Registry and Asset Manager"),
 		CountEdge(*Primary, Target->objectPath, cookscope::DependencyKind::Manage), 1);
+	TestTrue(TEXT("Recursive Asset Manager ownership includes a real non-Bundle managed package"),
+		HasEdge(*Primary, Runtime->objectPath, cookscope::DependencyKind::Manage));
 
 	const cookscope::GraphBuildResult Graph = cookscope::BuildDependencyGraph(Result.Snapshot, cookscope::OperationLimits{});
 	TestTrue(TEXT("Scanned snapshot builds a complete graph"), Graph.state == cookscope::OperationState::Complete);

@@ -36,6 +36,14 @@ if ($SourceSha -notmatch '^[0-9a-fA-F]{40}$') {
 $Project = [System.IO.Path]::GetFullPath($Project)
 $Config = [System.IO.Path]::GetFullPath($Config)
 $Output = [System.IO.Path]::GetFullPath($Output)
+$outputParent = Split-Path -Parent $Output
+New-Item -ItemType Directory -Force -Path $outputParent | Out-Null
+$stagingOutput = $Output + '.staging-' + [guid]::NewGuid().ToString('N')
+$backupOutput = $Output + '.previous-' + [guid]::NewGuid().ToString('N')
+if (-not $stagingOutput.StartsWith($outputParent, [System.StringComparison]::OrdinalIgnoreCase) -or
+    -not $backupOutput.StartsWith($outputParent, [System.StringComparison]::OrdinalIgnoreCase)) {
+  throw 'Refusing unsafe audit staging path'
+}
 if ([string]::IsNullOrWhiteSpace($LogPath)) {
   $LogPath = $Output + '.process.log'
 }
@@ -54,7 +62,7 @@ foreach ($argument in @(
   '-stdout',
   '-FullStdOutLogOutput',
   "-config=$Config",
-  "-output=$Output",
+  "-output=$stagingOutput",
   "-source-sha=$($SourceSha.ToLowerInvariant())",
   "-scope=$Scope",
   "-fail-on-violation=$($FailOnViolation.ToLowerInvariant())",
@@ -102,4 +110,49 @@ $stderr = $stderrTask.GetAwaiter().GetResult()
   [System.Text.UTF8Encoding]::new($false))
 $exitCode = if ($hardTimedOut) { 5 } else { $auditProcess.ExitCode }
 $auditProcess.Dispose()
+
+function Remove-StagedDirectory([string]$Path) {
+  if ([System.IO.Directory]::Exists($Path)) {
+    [System.IO.Directory]::Delete($Path, $true)
+  }
+}
+
+if ($exitCode -notin @(0, 2)) {
+  Remove-StagedDirectory $stagingOutput
+  exit $exitCode
+}
+
+$expectedReports = @('cookscope.json', 'cookscope.sarif', 'cookscope.junit.xml', 'cookscope.html', 'cookscope.snapshot.json')
+foreach ($name in $expectedReports) {
+  if (-not (Test-Path -LiteralPath (Join-Path $stagingOutput $name) -PathType Leaf)) {
+    Remove-StagedDirectory $stagingOutput
+    Write-Error "Successful audit did not stage the complete report set: $name"
+    exit 4
+  }
+}
+
+if ([System.IO.File]::Exists($Output)) {
+  Remove-StagedDirectory $stagingOutput
+  Write-Error "Audit output path is a file: $Output"
+  exit 4
+}
+$movedPrevious = $false
+try {
+  if ([System.IO.Directory]::Exists($Output)) {
+    [System.IO.Directory]::Move($Output, $backupOutput)
+    $movedPrevious = $true
+  }
+  [System.IO.Directory]::Move($stagingOutput, $Output)
+  if ($movedPrevious) {
+    [System.IO.Directory]::Delete($backupOutput, $true)
+  }
+}
+catch {
+  Remove-StagedDirectory $stagingOutput
+  if ($movedPrevious -and -not [System.IO.Directory]::Exists($Output) -and [System.IO.Directory]::Exists($backupOutput)) {
+    [System.IO.Directory]::Move($backupOutput, $Output)
+  }
+  Write-Error "Unable to publish complete audit report set: $($_.Exception.Message)"
+  exit 4
+}
 exit $exitCode
