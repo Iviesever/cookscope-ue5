@@ -163,12 +163,21 @@ namespace cookscope
 					return Fail(SnapshotErrorCode::InvalidType, path + ".primaryAssetId", "Primary Asset ID must be a string or null");
 				}
 
-				return ReadMeasurement(*diskSize, path + ".diskSize", output.diskSize) &&
+				if (!(ReadMeasurement(*diskSize, path + ".diskSize", output.diskSize) &&
 					ReadMeasurement(*cookedSize, path + ".cookedSize", output.cookedSize) &&
 					ReadChunkIds(*chunkIds, path + ".chunkIds", output.chunkIds) &&
 					ReadStringArray(*bundles, path + ".assetBundles", output.assetBundles) &&
 					ReadTags(*tags, path + ".tags", output.tags) &&
-					ReadDependencies(*dependencies, path + ".dependencies", output.dependencies);
+					ReadDependencies(*dependencies, path + ".dependencies", output.dependencies)))
+				{
+					return false;
+				}
+				output.dependencies.erase(
+					std::remove_if(output.dependencies.begin(), output.dependencies.end(), [&](const DependencyEdge& dependency) {
+						return dependency.kind == DependencyKind::Manage && dependency.target == output.objectPath;
+					}),
+					output.dependencies.end());
+				return true;
 			}
 
 			bool ReadMeasurement(const JsonValue& value, const std::string& path, SizeMeasurement& output)

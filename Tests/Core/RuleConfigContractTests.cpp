@@ -94,6 +94,17 @@ int main()
 		return Fail("negative byte budget must fail closed at a stable path");
 	}
 
+	std::string duplicateExceptionRule = aRule;
+	const std::string oneException = "[{\"selector\":\"/Game/Allowed/**\",\"reason\":\"Reviewed fixture\"}]";
+	const std::string twoExceptions = "[{\"selector\":\"/Game/Allowed/**\",\"reason\":\"Reviewed fixture\"},{\"selector\":\"/Game/Allowed/**\",\"reason\":\"Duplicate\"}]";
+	duplicateExceptionRule.replace(duplicateExceptionRule.find(oneException), oneException.size(), twoExceptions);
+	const auto duplicateException = cookscope::ParseRuleConfig(Config(duplicateExceptionRule));
+	if (duplicateException.ok || duplicateException.error.code != ConfigErrorCode::InvalidValue ||
+		duplicateException.error.path != "$.rules[0].exceptions[1].selector")
+	{
+		return Fail("duplicate exception selectors must fail closed at a stable path");
+	}
+
 	std::cout << "PASS: strict versioned Rule Config contract\n";
 	return 0;
 }

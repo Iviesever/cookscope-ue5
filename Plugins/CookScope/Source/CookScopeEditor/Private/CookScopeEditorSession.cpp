@@ -72,6 +72,18 @@ namespace
 		return TEXT("Not applicable");
 	}
 
+	FString EditorAssetChangeKind(cookscope::AssetChangeKind Kind)
+	{
+		switch (Kind)
+		{
+		case cookscope::AssetChangeKind::Added: return TEXT("Added");
+		case cookscope::AssetChangeKind::Removed: return TEXT("Removed");
+		case cookscope::AssetChangeKind::Modified: return TEXT("Modified");
+		case cookscope::AssetChangeKind::Renamed: return TEXT("Renamed");
+		}
+		return TEXT("Modified");
+	}
+
 	bool SaveEditorReport(const FString& Path, const std::string& Text)
 	{
 		return FFileHelper::SaveStringToFile(
@@ -111,10 +123,13 @@ FCookScopeEditorSession::~FCookScopeEditorSession()
 
 bool FCookScopeEditorSession::StartScan(const FCookScopeEditorScanSettings& Settings)
 {
-	if (Impl->Worker.IsValid()) Impl->Worker.Wait();
 	{
 		FScopeLock Lock(&Impl->Mutex);
 		if (Impl->State == ECookScopeEditorSessionState::Scanning) return false;
+	}
+	if (Impl->Worker.IsValid()) Impl->Worker.Wait();
+	{
+		FScopeLock Lock(&Impl->Mutex);
 		Impl->CancelRequested = false;
 		Impl->State = ECookScopeEditorSessionState::Scanning;
 		Impl->Progress = 0.05f;
@@ -123,7 +138,9 @@ bool FCookScopeEditorSession::StartScan(const FCookScopeEditorScanSettings& Sett
 	}
 
 	FString ConfigText;
-	if (!FFileHelper::LoadFileToString(ConfigText, *Settings.ConfigPath))
+	const int64 ConfigBytes = IFileManager::Get().FileSize(*Settings.ConfigPath);
+	if (ConfigBytes < 0 || ConfigBytes > Settings.MaximumConfigBytes ||
+		!FFileHelper::LoadFileToString(ConfigText, *Settings.ConfigPath))
 	{
 		FScopeLock Lock(&Impl->Mutex);
 		Impl->State = ECookScopeEditorSessionState::Failed;
@@ -144,7 +161,12 @@ bool FCookScopeEditorSession::StartScan(const FCookScopeEditorScanSettings& Sett
 		Impl->Progress = 0.2f;
 		Impl->Status = TEXT("Scanning Asset Registry");
 	}
-	FCookScopeScanResult Scan = FCookScopeAssetScanner::ScanPath(Settings.Scope, Settings.SourceSha);
+	FCookScopeScanOptions ScanOptions;
+	ScanOptions.bDiscoverOnDisk = false;
+	ScanOptions.bRefreshAssetManager = false;
+	ScanOptions.MaximumAssets = Settings.MaximumAssets;
+	ScanOptions.MaximumDependencies = Settings.MaximumDependencies;
+	FCookScopeScanResult Scan = FCookScopeAssetScanner::ScanPath(Settings.Scope, Settings.SourceSha, ScanOptions);
 	if (!Scan.bSuccess)
 	{
 		FScopeLock Lock(&Impl->Mutex);
@@ -154,6 +176,14 @@ bool FCookScopeEditorSession::StartScan(const FCookScopeEditorScanSettings& Sett
 	}
 	if (!Settings.CookRegistryPath.IsEmpty())
 	{
+		const int64 RegistryBytes = IFileManager::Get().FileSize(*Settings.CookRegistryPath);
+		if (RegistryBytes < 0 || RegistryBytes > Settings.MaximumCookRegistryBytes)
+		{
+			FScopeLock Lock(&Impl->Mutex);
+			Impl->State = ECookScopeEditorSessionState::Failed;
+			Impl->Status = TEXT("Cook Registry is missing or exceeds the configured input limit");
+			return false;
+		}
 		const FCookScopeCookMergeResult Merge = FCookScopeCookSnapshotReader::MergeDevelopmentRegistry(
 			Settings.CookRegistryPath,
 			Settings.CookPlatform,
@@ -173,7 +203,9 @@ bool FCookScopeEditorSession::StartScan(const FCookScopeEditorScanSettings& Sett
 	if (!Settings.BaselinePath.IsEmpty())
 	{
 		FString BaselineText;
-		if (!FFileHelper::LoadFileToString(BaselineText, *Settings.BaselinePath))
+		const int64 BaselineBytes = IFileManager::Get().FileSize(*Settings.BaselinePath);
+		if (BaselineBytes < 0 || BaselineBytes > Settings.MaximumBaselineBytes ||
+			!FFileHelper::LoadFileToString(BaselineText, *Settings.BaselinePath))
 		{
 			FScopeLock Lock(&Impl->Mutex);
 			Impl->State = ECookScopeEditorSessionState::Failed;
@@ -425,6 +457,26 @@ FString FCookScopeEditorSession::GetComparisonSummary() const
 		static_cast<int32>(Diff.edgeChanges.size()),
 		static_cast<int32>(Diff.findingChanges.size()),
 		static_cast<int32>(Diff.sizeChanges.size()));
+	for (const cookscope::AssetChange& Change : Diff.assetChanges)
+	{
+		const FString BaselinePath = EditorSessionFromUtf8(Change.baselinePath);
+		const FString CandidatePath = EditorSessionFromUtf8(Change.candidatePath);
+		Summary += FString::Printf(
+			TEXT("\n%s: %s -> %s"),
+			*EditorAssetChangeKind(Change.kind),
+			BaselinePath.IsEmpty() ? TEXT("—") : *BaselinePath,
+			CandidatePath.IsEmpty() ? TEXT("—") : *CandidatePath);
+		if (!Change.fields.empty())
+		{
+			Summary += TEXT(" [");
+			for (std::size_t Index = 0; Index < Change.fields.size(); ++Index)
+			{
+				if (Index != 0) Summary += TEXT(", ");
+				Summary += EditorSessionFromUtf8(Change.fields[Index]);
+			}
+			Summary += TEXT("]");
+		}
+	}
 	for (const cookscope::CookedSizeChange& Change : Diff.sizeChanges)
 	{
 		Summary += FString::Printf(

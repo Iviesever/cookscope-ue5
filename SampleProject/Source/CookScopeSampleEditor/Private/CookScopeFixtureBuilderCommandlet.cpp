@@ -6,6 +6,7 @@
 #include "Engine/AssetManager.h"
 #include "Misc/PackageName.h"
 #include "UObject/Package.h"
+#include "UObject/ObjectRedirector.h"
 #include "UObject/SavePackage.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogCookScopeFixtureBuilder, Log, All);
@@ -13,6 +14,7 @@ DEFINE_LOG_CATEGORY_STATIC(LogCookScopeFixtureBuilder, Log, All);
 namespace
 {
 	constexpr TCHAR FixtureRoot[] = TEXT("/Game/CookScopeFixtures");
+	constexpr TCHAR P0FixtureRoot[] = TEXT("/Game/CookScopeP0Fixtures");
 	constexpr TCHAR ResourceFixtureRoot[] = TEXT("/Game/CookScopeResourceFixtures");
 
 	struct FFixture
@@ -28,9 +30,9 @@ namespace
 		bool bCreated = false;
 	};
 
-	FFixture FindOrCreateFixture(const TCHAR* RelativePackage, const TCHAR* AssetName)
+	FFixture FindOrCreateFixtureAtRoot(const TCHAR* Root, const TCHAR* RelativePackage, const TCHAR* AssetName)
 	{
-		const FString PackageName = FString(FixtureRoot) / RelativePackage;
+		const FString PackageName = FString(Root) / RelativePackage;
 		const FString ObjectPath = PackageName + TEXT(".") + AssetName;
 		if (UCookScopeFixtureAsset* Existing = LoadObject<UCookScopeFixtureAsset>(nullptr, *ObjectPath))
 		{
@@ -44,6 +46,11 @@ namespace
 			RF_Public | RF_Standalone | RF_Transactional);
 		FAssetRegistryModule::AssetCreated(Asset);
 		return {PackageName, Asset};
+	}
+
+	FFixture FindOrCreateFixture(const TCHAR* RelativePackage, const TCHAR* AssetName)
+	{
+		return FindOrCreateFixtureAtRoot(FixtureRoot, RelativePackage, AssetName);
 	}
 
 	bool SaveFixture(const FFixture& Fixture)
@@ -90,6 +97,29 @@ namespace
 		SaveArgs.SaveFlags = SAVE_None;
 		SaveArgs.Error = GError;
 		return UPackage::SavePackage(Fixture.Asset->GetPackage(), Fixture.Asset, *Filename, SaveArgs);
+	}
+
+	FObjectFixture FindOrCreateRedirector(UObject* Destination)
+	{
+		const FString PackageName = FString(P0FixtureRoot) / TEXT("Redirectors/OldTarget");
+		UPackage* Package = LoadPackage(nullptr, *PackageName, LOAD_None);
+		if (Package)
+		{
+			if (UObjectRedirector* Existing = FindObject<UObjectRedirector>(Package, TEXT("OldTarget")))
+				return {PackageName, Existing, false};
+		}
+		else
+		{
+			Package = CreatePackage(*PackageName);
+		}
+		UObjectRedirector* Redirector = NewObject<UObjectRedirector>(
+			Package,
+			TEXT("OldTarget"),
+			RF_Public | RF_Standalone | RF_Transactional);
+		if (!Redirector) return {PackageName, nullptr, false};
+		Redirector->DestinationObject = Destination;
+		FAssetRegistryModule::AssetCreated(Redirector);
+		return {PackageName, Redirector, true};
 	}
 }
 
@@ -138,6 +168,12 @@ int32 UCookScopeFixtureBuilderCommandlet::Main(const FString& Params)
 	FFixture Candidate = FindOrCreateFixture(TEXT("Primary/DA_Candidate"), TEXT("DA_Candidate"));
 	FFixture CycleA = FindOrCreateFixture(TEXT("Cycle/DA_CycleA"), TEXT("DA_CycleA"));
 	FFixture CycleB = FindOrCreateFixture(TEXT("Cycle/DA_CycleB"), TEXT("DA_CycleB"));
+	FFixture EditorOnly = FindOrCreateFixtureAtRoot(P0FixtureRoot, TEXT("EditorOnly/DA_EditorOnly"), TEXT("DA_EditorOnly"));
+	FFixture Runtime = FindOrCreateFixtureAtRoot(P0FixtureRoot, TEXT("Runtime/DA_Runtime"), TEXT("DA_Runtime"));
+	FFixture MissingRef = FindOrCreateFixtureAtRoot(P0FixtureRoot, TEXT("MissingRef/DA_MissingRef"), TEXT("DA_MissingRef"));
+	FFixture Conflict = FindOrCreateFixtureAtRoot(P0FixtureRoot, TEXT("Primary/DA_Conflict"), TEXT("DA_Conflict"));
+	FFixture DuplicateOne = FindOrCreateFixtureAtRoot(P0FixtureRoot, TEXT("Duplicate/One/DA_Duplicate"), TEXT("DA_Duplicate"));
+	FFixture DuplicateTwo = FindOrCreateFixtureAtRoot(P0FixtureRoot, TEXT("Duplicate/Two/DA_Duplicate"), TEXT("DA_Duplicate"));
 	const TArray<FObjectFixture> ResourceFixtures = {
 		FindOrDuplicateFixture(TEXT("/Engine/EngineResources/DefaultTexture.DefaultTexture"), TEXT("Textures/T_Resource"), TEXT("T_Resource")),
 		FindOrDuplicateFixture(TEXT("/Engine/BasicShapes/Cube.Cube"), TEXT("Meshes/SM_Resource"), TEXT("SM_Resource")),
@@ -155,14 +191,28 @@ int32 UCookScopeFixtureBuilderCommandlet::Main(const FString& Params)
 	BadName.Asset->FixtureId = TEXT("fixture.naming-invalid");
 	Primary.Asset->FixtureId = TEXT("fixture.primary");
 	Primary.Asset->BundledReference = TSoftObjectPtr<UCookScopeFixtureAsset>(Target.Asset);
+	Primary.Asset->HardReference = Runtime.Asset;
 	Candidate.Asset->FixtureId = TEXT("fixture.candidate-new");
 	Candidate.Asset->BundledReference = TSoftObjectPtr<UCookScopeFixtureAsset>(Target.Asset);
 	CycleA.Asset->FixtureId = TEXT("fixture.cycle-a");
 	CycleA.Asset->HardReference = CycleB.Asset;
 	CycleB.Asset->FixtureId = TEXT("fixture.cycle-b");
 	CycleB.Asset->HardReference = CycleA.Asset;
+	EditorOnly.Asset->FixtureId = TEXT("fixture.editor-only-cooked");
+	Runtime.Asset->FixtureId = TEXT("fixture.runtime-to-editor");
+	Runtime.Asset->HardReference = EditorOnly.Asset;
+	MissingRef.Asset->FixtureId = TEXT("fixture.missing-reference");
+	MissingRef.Asset->MissingReference = TSoftObjectPtr<UObject>(FSoftObjectPath(TEXT("/Game/CookScopeFixtures/DoesNotExist.Missing")));
+	Conflict.Asset->FixtureId = TEXT("fixture.asset-manager-conflict");
+	Conflict.Asset->BundledReference = TSoftObjectPtr<UCookScopeFixtureAsset>(Target.Asset);
+	Conflict.Asset->AlwaysCook = TEXT("true");
+	Conflict.Asset->NeverCook = TEXT("true");
+	DuplicateOne.Asset->FixtureId = TEXT("fixture.ambiguous-one");
+	DuplicateTwo.Asset->FixtureId = TEXT("fixture.ambiguous-two");
 
-	const TArray<FFixture> Fixtures = {Target, Hard, Soft, Searchable, BadName, Primary, Candidate, CycleA, CycleB};
+	const TArray<FFixture> Fixtures = {
+		Target, Hard, Soft, Searchable, BadName, Primary, Candidate, CycleA, CycleB,
+		EditorOnly, Runtime, MissingRef, Conflict, DuplicateOne, DuplicateTwo};
 	for (const FFixture& Fixture : Fixtures)
 	{
 		if (!Fixture.Asset || !SaveFixture(Fixture))
@@ -179,9 +229,15 @@ int32 UCookScopeFixtureBuilderCommandlet::Main(const FString& Params)
 			return 4;
 		}
 	}
+	const FObjectFixture Redirector = FindOrCreateRedirector(Target.Asset);
+	if (!SaveObjectFixture(Redirector))
+	{
+		UE_LOG(LogCookScopeFixtureBuilder, Error, TEXT("Failed to save redirector fixture: %s"), *Redirector.PackageName);
+		return 4;
+	}
 
 	IAssetRegistry& Registry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry")).Get();
-	Registry.ScanPathsSynchronous({FixtureRoot, ResourceFixtureRoot}, true);
+	Registry.ScanPathsSynchronous({FixtureRoot, P0FixtureRoot, ResourceFixtureRoot}, true);
 	UAssetManager& AssetManager = UAssetManager::Get();
 	AssetManager.ScanPathForPrimaryAssets(
 		FPrimaryAssetType(TEXT("CookScopeFixture")),
@@ -195,9 +251,10 @@ int32 UCookScopeFixtureBuilderCommandlet::Main(const FString& Params)
 	UE_LOG(
 		LogCookScopeFixtureBuilder,
 		Display,
-		TEXT("Generated %d deterministic fixtures under %s and %s"),
-		Fixtures.Num() + ResourceFixtures.Num(),
+		TEXT("Generated %d deterministic fixtures under %s, %s, and %s"),
+		Fixtures.Num() + ResourceFixtures.Num() + 1,
 		FixtureRoot,
+		P0FixtureRoot,
 		ResourceFixtureRoot);
 	return 0;
 }

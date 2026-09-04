@@ -46,11 +46,13 @@ if ($LASTEXITCODE -ne 0) {
 
 $report = Get-Content -LiteralPath (Join-Path $output 'cookscope.json') -Raw | ConvertFrom-Json
 $snapshot = Get-Content -LiteralPath (Join-Path $output 'cookscope.snapshot.json') -Raw | ConvertFrom-Json
+$baselineDocument = Get-Content -LiteralPath $baseline -Raw | ConvertFrom-Json
 $added = @($report.diff.assetChanges | Where-Object {
   $_.kind -eq 'added' -and $_.candidatePath -eq '/Game/CookScopeFixtures/Primary/DA_Candidate.DA_Candidate'
 })
 $candidate = @($snapshot.assets | Where-Object objectPath -eq '/Game/CookScopeFixtures/Primary/DA_Candidate.DA_Candidate')
 if (-not $report.diff.comparable -or $added.Count -ne 1 -or $candidate.Count -ne 1 -or
+    @($report.diff.assetChanges).Count -ne 1 -or
     $candidate[0].cookedSize.kind -ne 'actual-cooked' -or [int64]$candidate[0].cookedSize.bytes -le 0) {
   throw 'Real Cook diff does not contain one Added actual-cooked DA_Candidate asset'
 }
@@ -59,7 +61,7 @@ if (-not $report.diff.comparable -or $added.Count -ne 1 -or $candidate.Count -ne
   Result = 'PASS'
   EvidenceRoot = $runRoot
   SourceSha = $sourceSha
-  BaselineSha = 'cae3fe37332c068ceeddd614a6b8505cdbb42350'
+  BaselineSha = $baselineDocument.provenance.sourceSha
   CandidateAssets = @($snapshot.assets).Count
   CandidateActualCookedAssets = @($snapshot.assets | Where-Object { $_.cookedSize.kind -eq 'actual-cooked' }).Count
   AddedCandidateCookedBytes = [int64]$candidate[0].cookedSize.bytes

@@ -89,6 +89,7 @@ namespace
 			if (Session->GetState() == ECookScopeEditorSessionState::Scanning) return false;
 			Test->TestEqual(TEXT("Editor comparison scan completes"), Session->GetState(), ECookScopeEditorSessionState::Complete);
 			const FString Comparison = Session->GetComparisonSummary();
+			Test->AddInfo(FString::Printf(TEXT("Comparison summary: %s"), *Comparison));
 			Test->TestTrue(TEXT("Editor exposes baseline/candidate comparison"), Comparison.Contains(TEXT("Asset changes 1")));
 			Test->TestTrue(TEXT("Editor comparison exposes size changes"), Comparison.Contains(TEXT("Size changes")));
 			Session->Shutdown();
@@ -117,6 +118,15 @@ bool FCookScopeEditorWorkflowTest::RunTest(const FString& Parameters)
 		TEXT("Cooked/Windows/CookScopeSample/Metadata/DevelopmentAssetRegistry.bin"));
 	Settings.CookPlatform = TEXT("Windows");
 	Settings.CookConfiguration = TEXT("Development");
+
+	FCookScopeEditorScanSettings BoundedSettings = Settings;
+	BoundedSettings.Scope = TEXT("/Game");
+	BoundedSettings.MaximumAssets = 1;
+	TSharedRef<FCookScopeEditorSession> BoundedSession = MakeShared<FCookScopeEditorSession>();
+	TestFalse(TEXT("Editor scan fails closed at its explicit asset bound"), BoundedSession->StartScan(BoundedSettings));
+	TestEqual(TEXT("Bounded scan reports failure"), BoundedSession->GetState(), ECookScopeEditorSessionState::Failed);
+	TestTrue(TEXT("Bounded scan status identifies the limit"), BoundedSession->GetStatusText().Contains(TEXT("asset limit")));
+	BoundedSession->Shutdown();
 
 	TSharedRef<FCookScopeEditorSession> Session = MakeShared<FCookScopeEditorSession>();
 	TestTrue(TEXT("Editor scan starts"), Session->StartScan(Settings));

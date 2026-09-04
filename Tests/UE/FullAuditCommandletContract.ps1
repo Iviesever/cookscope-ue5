@@ -112,6 +112,44 @@ foreach ($outputPath in @($blockingOutput, $nonBlockingOutput)) {
   }
 }
 
+$wrapper = Join-Path $repositoryRoot 'scripts\Invoke-CookScopeAudit.ps1'
+if (-not (Test-Path -LiteralPath $wrapper -PathType Leaf)) {
+  throw "Strict CI audit wrapper is missing: $wrapper"
+}
+$hardTimeoutOutput = Join-Path $runRoot 'hard-timeout'
+$previousHardDelay = $env:COOKSCOPE_TEST_DELAY_MS
+$hardStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+try {
+  $env:COOKSCOPE_TEST_DELAY_MS = '10000'
+  & pwsh -NoLogo -NoProfile -File $wrapper `
+    -EngineRoot $EngineRoot `
+    -Project $project `
+    -Config $config `
+    -Output $hardTimeoutOutput `
+    -SourceSha $sourceSha `
+    -Scope '/Game/CookScopeFixtures' `
+    -TimeoutSeconds 1 `
+    -FailOnViolation 'false'
+  $hardTimeoutExit = $LASTEXITCODE
+}
+finally {
+  $hardStopwatch.Stop()
+  if ($null -eq $previousHardDelay) {
+    Remove-Item Env:COOKSCOPE_TEST_DELAY_MS -ErrorAction SilentlyContinue
+  }
+  else {
+    $env:COOKSCOPE_TEST_DELAY_MS = $previousHardDelay
+  }
+}
+if ($hardTimeoutExit -ne 5 -or $hardStopwatch.Elapsed.TotalSeconds -ge 5.0) {
+  throw "Expected strict wrapper exit 5 in under 5 seconds, got exit $hardTimeoutExit in $($hardStopwatch.Elapsed.TotalSeconds)s"
+}
+if (Test-Path -LiteralPath $hardTimeoutOutput) {
+  if (@(Get-ChildItem -LiteralPath $hardTimeoutOutput -File -ErrorAction SilentlyContinue).Count -ne 0) {
+    throw 'Hard-timed-out audit must not publish report files'
+  }
+}
+
 [pscustomobject]@{
   Result = 'PASS'
   EvidenceRoot = $runRoot
@@ -119,5 +157,7 @@ foreach ($outputPath in @($blockingOutput, $nonBlockingOutput)) {
   BlockingExitCode = $blockingExit
   NonBlockingExitCode = $nonBlockingExit
   TimeoutExitCode = $timeoutExit
+  HardTimeoutExitCode = $hardTimeoutExit
+  HardTimeoutSeconds = [math]::Round($hardStopwatch.Elapsed.TotalSeconds, 3)
   FindingCount = @($json.findings).Count
 } | Format-List

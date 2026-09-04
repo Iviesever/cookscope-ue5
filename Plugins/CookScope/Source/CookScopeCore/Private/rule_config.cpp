@@ -149,6 +149,7 @@ namespace cookscope
 
 			bool ReadExceptions(const JsonValue& value, const std::string& path, std::vector<RuleException>& output)
 			{
+				std::set<std::string, std::less<>> selectors;
 				for (std::size_t index = 0; index < value.array.size(); ++index)
 				{
 					const JsonValue& item = value.array[index];
@@ -170,6 +171,10 @@ namespace cookscope
 					if (selector->scalar.empty() || reason->scalar.empty())
 					{
 						return Fail(ConfigErrorCode::InvalidValue, itemPath, "exception selector and reason must not be empty");
+					}
+					if (!selectors.insert(selector->scalar).second)
+					{
+						return Fail(ConfigErrorCode::InvalidValue, itemPath + ".selector", "duplicate exception selector");
 					}
 					output.push_back({selector->scalar, reason->scalar});
 				}

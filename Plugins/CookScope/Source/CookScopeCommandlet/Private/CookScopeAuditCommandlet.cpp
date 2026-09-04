@@ -29,6 +29,10 @@ DEFINE_LOG_CATEGORY_STATIC(LogCookScopeCommandlet, Log, All);
 
 namespace
 {
+	constexpr int64 MaximumConfigBytes = 4 * 1024 * 1024;
+	constexpr int64 MaximumBaselineBytes = 256 * 1024 * 1024;
+	constexpr int64 MaximumCookRegistryBytes = 1024ll * 1024ll * 1024ll;
+
 	bool IsEngineOwnedSwitch(const FString& Switch)
 	{
 		return Switch.Equals(TEXT("run=CookScopeAudit"), ESearchCase::IgnoreCase) ||
@@ -53,6 +57,12 @@ namespace
 		if (!FFileHelper::LoadFileToString(Text, *Path)) return false;
 		Output = CommandletToUtf8(Text);
 		return true;
+	}
+
+	bool FileFitsLimit(const FString& Path, int64 MaximumBytes)
+	{
+		const int64 Size = IFileManager::Get().FileSize(*Path);
+		return Size >= 0 && Size <= MaximumBytes;
 	}
 
 	bool SaveUtf8Atomic(const FString& Path, const std::string& Text)
@@ -105,7 +115,7 @@ namespace
 
 		const FString ConfigPath = FPaths::ConvertRelativePathToFull(UTF8_TO_TCHAR(Parsed.value.configPath.c_str()));
 		std::string ConfigText;
-		if (!LoadUtf8(ConfigPath, ConfigText))
+		if (!FileFitsLimit(ConfigPath, MaximumConfigBytes) || !LoadUtf8(ConfigPath, ConfigText))
 		{
 			UE_LOG(LogCookScopeCommandlet, Error, TEXT("Unable to read config: %s"), *ConfigPath);
 			return cookscope::CommandletExitCode(cookscope::AuditStatus::InvalidInvocation);
@@ -127,11 +137,25 @@ namespace
 #endif
 		if (DeadlineExpired(TEXT("configuration"))) return cookscope::CommandletExitCode(cookscope::AuditStatus::Cancelled);
 
+		FCookScopeScanOptions ScanOptions;
+		ScanOptions.bDiscoverOnDisk = false;
+		ScanOptions.bRefreshAssetManager = false;
+		ScanOptions.MaximumAssets = 100000;
+		ScanOptions.MaximumDependencies = 500000;
+		ScanOptions.ShouldCancel = [&]() {
+			return FPlatformTime::Seconds() - StartedAt > Parsed.value.timeoutSeconds;
+		};
 		const FCookScopeScanResult Scan = FCookScopeAssetScanner::ScanPath(
 			UTF8_TO_TCHAR(Parsed.value.scope.c_str()),
-			UTF8_TO_TCHAR(Parsed.value.sourceSha.c_str()));
+			UTF8_TO_TCHAR(Parsed.value.sourceSha.c_str()),
+			ScanOptions);
 		if (!Scan.bSuccess)
 		{
+			if (Scan.bCancelled)
+			{
+				UE_LOG(LogCookScopeCommandlet, Error, TEXT("%s"), *Scan.Error);
+				return cookscope::CommandletExitCode(cookscope::AuditStatus::Cancelled);
+			}
 			UE_LOG(LogCookScopeCommandlet, Error, TEXT("Asset scan failed: %s"), *Scan.Error);
 			return cookscope::CommandletExitCode(cookscope::AuditStatus::InternalError);
 		}
@@ -140,6 +164,11 @@ namespace
 		if (!Parsed.value.cookRegistryPath.empty())
 		{
 			const FString CookRegistryPath = FPaths::ConvertRelativePathToFull(UTF8_TO_TCHAR(Parsed.value.cookRegistryPath.c_str()));
+			if (!FileFitsLimit(CookRegistryPath, MaximumCookRegistryBytes))
+			{
+				UE_LOG(LogCookScopeCommandlet, Error, TEXT("Cook Registry is missing or exceeds the 1 GiB input limit: %s"), *CookRegistryPath);
+				return cookscope::CommandletExitCode(cookscope::AuditStatus::InvalidInvocation);
+			}
 			const FCookScopeCookMergeResult Merge = FCookScopeCookSnapshotReader::MergeDevelopmentRegistry(
 				CookRegistryPath,
 				UTF8_TO_TCHAR(Parsed.value.cookPlatform.c_str()),
@@ -160,7 +189,7 @@ namespace
 		{
 			const FString BaselinePath = FPaths::ConvertRelativePathToFull(UTF8_TO_TCHAR(Parsed.value.baselinePath.c_str()));
 			std::string BaselineText;
-			if (!LoadUtf8(BaselinePath, BaselineText))
+			if (!FileFitsLimit(BaselinePath, MaximumBaselineBytes) || !LoadUtf8(BaselinePath, BaselineText))
 			{
 				UE_LOG(LogCookScopeCommandlet, Error, TEXT("Unable to read baseline: %s"), *BaselinePath);
 				return cookscope::CommandletExitCode(cookscope::AuditStatus::InvalidInvocation);

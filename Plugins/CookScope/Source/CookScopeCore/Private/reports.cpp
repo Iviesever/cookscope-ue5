@@ -4,6 +4,8 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <map>
+#include <set>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -323,6 +325,34 @@ namespace cookscope
 				item.object.emplace("locations", std::move(locations));
 				results.array.push_back(std::move(item));
 			}
+			for (const AnalysisDiagnostic& diagnostic : analysis.diagnostics)
+			{
+				JsonValue item;
+				item.type = JsonType::Object;
+				item.object.emplace("ruleId", ReportJsonString(diagnostic.ruleId));
+				item.object.emplace("level", ReportJsonString("error"));
+				JsonValue message;
+				message.type = JsonType::Object;
+				message.object.emplace("text", ReportJsonString("analysis diagnostic: " + diagnostic.message));
+				item.object.emplace("message", std::move(message));
+				JsonValue locations;
+				locations.type = JsonType::Array;
+				if (!diagnostic.assetPath.empty())
+				{
+					JsonValue location;
+					location.type = JsonType::Object;
+					JsonValue physical;
+					physical.type = JsonType::Object;
+					JsonValue artifact;
+					artifact.type = JsonType::Object;
+					artifact.object.emplace("uri", ReportJsonString(diagnostic.assetPath));
+					physical.object.emplace("artifactLocation", std::move(artifact));
+					location.object.emplace("physicalLocation", std::move(physical));
+					locations.array.push_back(std::move(location));
+				}
+				item.object.emplace("locations", std::move(locations));
+				results.array.push_back(std::move(item));
+			}
 			run.object.emplace("results", std::move(results));
 			runs.array.push_back(std::move(run));
 			root.object.emplace("runs", std::move(runs));
@@ -347,15 +377,77 @@ namespace cookscope
 			return output;
 		}
 
-		std::string RenderJUnit(const AnalysisResult& analysis)
+		std::string RenderJUnit(const RuleConfig& config, const AnalysisResult& analysis)
 		{
-			std::string output = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
-			output += "<testsuite tests=\"" + std::to_string(analysis.findings.size()) + "\" failures=\"" +
-				std::to_string(analysis.findings.size()) + "\" errors=\"0\" skipped=\"0\" name=\"CookScope\">\n";
-			for (const Finding& finding : analysis.findings)
+			std::map<std::string, const RuleDefinition*, std::less<>> rules;
+			std::set<std::string, std::less<>> testIds;
+			for (const RuleDefinition& rule : config.rules)
 			{
-				output += "  <testcase classname=\"" + EscapeXml(finding.ruleId) + "\" name=\"" + EscapeXml(finding.assetPath) + "\">\n";
-				output += "    <failure message=\"" + EscapeXml(finding.message) + "\">" + EscapeXml(finding.message) + "</failure>\n";
+				rules.emplace(rule.id, &rule);
+				testIds.insert(rule.id);
+			}
+			for (const Finding& finding : analysis.findings) testIds.insert(finding.ruleId);
+			for (const AnalysisDiagnostic& diagnostic : analysis.diagnostics) testIds.insert(diagnostic.ruleId);
+
+			auto Blocks = [&](const Finding& finding) {
+				const auto rule = rules.find(finding.ruleId);
+				const Severity threshold = rule == rules.end() ? Severity::Error : rule->second->failThreshold;
+				return finding.severity >= threshold;
+			};
+			std::size_t failures = 0;
+			std::size_t errors = 0;
+			for (const std::string& id : testIds)
+			{
+				const bool hasDiagnostic = std::any_of(analysis.diagnostics.begin(), analysis.diagnostics.end(), [&](const AnalysisDiagnostic& diagnostic) {
+					return diagnostic.ruleId == id;
+				});
+				if (hasDiagnostic)
+				{
+					++errors;
+					continue;
+				}
+				if (std::any_of(analysis.findings.begin(), analysis.findings.end(), [&](const Finding& finding) {
+					return finding.ruleId == id && Blocks(finding);
+				})) ++failures;
+			}
+
+			std::string output = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
+			output += "<testsuite tests=\"" + std::to_string(testIds.size()) + "\" failures=\"" +
+				std::to_string(failures) + "\" errors=\"" + std::to_string(errors) + "\" skipped=\"0\" name=\"CookScope\">\n";
+			for (const std::string& id : testIds)
+			{
+				output += "  <testcase classname=\"CookScope\" name=\"" + EscapeXml(id) + "\">\n";
+				std::vector<const AnalysisDiagnostic*> diagnostics;
+				std::vector<const Finding*> blocking;
+				std::vector<const Finding*> nonBlocking;
+				for (const AnalysisDiagnostic& diagnostic : analysis.diagnostics)
+					if (diagnostic.ruleId == id) diagnostics.push_back(&diagnostic);
+				for (const Finding& finding : analysis.findings)
+				{
+					if (finding.ruleId != id) continue;
+					(Blocks(finding) ? blocking : nonBlocking).push_back(&finding);
+				}
+				if (!diagnostics.empty())
+				{
+					output += "    <error message=\"" + std::to_string(diagnostics.size()) + " diagnostics\">";
+					for (const AnalysisDiagnostic* diagnostic : diagnostics)
+						output += EscapeXml(diagnostic->assetPath + ": " + diagnostic->message) + "\n";
+					output += "</error>\n";
+				}
+				else if (!blocking.empty())
+				{
+					output += "    <failure message=\"" + std::to_string(blocking.size()) + " blocking findings\">";
+					for (const Finding* finding : blocking)
+						output += EscapeXml(finding->assetPath + ": " + finding->message) + "\n";
+					output += "</failure>\n";
+				}
+				if (!nonBlocking.empty())
+				{
+					output += "    <system-out>";
+					for (const Finding* finding : nonBlocking)
+						output += EscapeXml(finding->assetPath + ": " + finding->message) + "\n";
+					output += "</system-out>\n";
+				}
 				output += "  </testcase>\n";
 			}
 			output += "</testsuite>\n";
@@ -385,16 +477,18 @@ namespace cookscope
 <section class="cards"><div class="card"><span class="muted">Assets</span><strong id="asset-count">0</strong></div><div class="card"><span class="muted">Findings</span><strong id="finding-count">0</strong></div><div class="card"><span class="muted">Errors</span><strong id="error-count">0</strong></div><div class="card"><span class="muted">Warnings</span><strong id="warning-count">0</strong></div></section>
 <section id="comparison-summary" class="comparison">No compatible baseline was supplied.</section>
 <section class="controls"><select id="severity-filter"><option value="">All severities</option><option>error</option><option>warning</option><option>note</option></select><select id="rule-filter"><option value="">All rules</option></select><select id="class-filter"><option value="">All classes</option></select><input id="path-search" placeholder="Search asset path"><select id="chunk-filter"><option value="">All chunks</option></select><select id="bundle-filter"><option value="">All bundles</option></select><select id="change-filter"><option value="">All baseline states</option><option value="changed">Changed assets</option><option value="stable">Stable assets</option></select><select id="size-sort"><option value="path">Path order</option><option value="size-desc">Largest size first</option><option value="delta-desc">Largest delta first</option></select></section>
-<h2>Findings</h2><div class="table-wrap"><table><thead><tr><th>Severity</th><th>Rule</th><th>Asset</th><th>Class</th><th>Message / dependency</th><th>Cook size</th></tr></thead><tbody id="findings"></tbody></table></div>
+<h2>Findings</h2><div class="table-wrap"><table><thead><tr><th>Severity</th><th>Rule</th><th>Asset / aggregate</th><th>Class</th><th>Message / dependency</th><th>Measured size</th></tr></thead><tbody id="findings"></tbody></table></div>
+<h2>Diagnostics</h2><div class="table-wrap"><table id="diagnostics-table"><thead><tr><th>Rule</th><th>Asset</th><th>Code</th><th>Message</th></tr></thead><tbody id="diagnostics"></tbody></table></div>
 <h2>Assets, chunks, and bundles</h2><div class="table-wrap"><table id="asset-table"><thead><tr><th>Asset</th><th>Class</th><th>Cook size</th><th>Delta</th><th>Chunk</th><th>Bundle</th><th>Primary / dependencies</th></tr></thead><tbody id="assets"></tbody></table></div>
 <script type="application/json" id="cookscope-data">__COOKSCOPE_DATA__</script><script>
-'use strict';const data=JSON.parse(document.getElementById('cookscope-data').textContent),assetRows=Array.isArray(data.assets)?data.assets:[],findingRows=Array.isArray(data.findings)?data.findings:[],diff=data.diff&&data.diff.comparable?data.diff:null,assetMap=new Map(assetRows.map(a=>[a.objectPath,a])),deltas=new Map(((diff&&diff.sizeChanges)||[]).map(d=>[d.assetPath,d.deltaBytes])),changed=new Set();((diff&&diff.assetChanges)||[]).forEach(c=>{if(c.baselinePath)changed.add(c.baselinePath);if(c.candidatePath)changed.add(c.candidatePath)});((diff&&diff.sizeChanges)||[]).forEach(c=>changed.add(c.assetPath));const ids=['severity-filter','rule-filter','class-filter','path-search','chunk-filter','bundle-filter','change-filter','size-sort'],controls=Object.fromEntries(ids.map(id=>[id,document.getElementById(id)])),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),option=(id,value)=>controls[id].insertAdjacentHTML('beforeend',`<option value="${esc(value)}">${esc(value)}</option>`);
+'use strict';const data=JSON.parse(document.getElementById('cookscope-data').textContent),assetRows=Array.isArray(data.assets)?data.assets:[],findingRows=Array.isArray(data.findings)?data.findings:[],diagnosticRows=Array.isArray(data.diagnostics)?data.diagnostics:[],diff=data.diff&&data.diff.comparable?data.diff:null,assetMap=new Map(assetRows.map(a=>[a.objectPath,a])),deltas=new Map(((diff&&diff.sizeChanges)||[]).map(d=>[d.assetPath,d.deltaBytes])),changed=new Set();((diff&&diff.assetChanges)||[]).forEach(c=>{if(c.baselinePath)changed.add(c.baselinePath);if(c.candidatePath)changed.add(c.candidatePath)});((diff&&diff.sizeChanges)||[]).forEach(c=>changed.add(c.assetPath));const ids=['severity-filter','rule-filter','class-filter','path-search','chunk-filter','bundle-filter','change-filter','size-sort'],controls=Object.fromEntries(ids.map(id=>[id,document.getElementById(id)])),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),option=(id,value)=>controls[id].insertAdjacentHTML('beforeend',`<option value="${esc(value)}">${esc(value)}</option>`);
 document.getElementById('asset-count').textContent=data.summary.assets;document.getElementById('finding-count').textContent=data.summary.findings;document.getElementById('error-count').textContent=data.summary.errors;document.getElementById('warning-count').textContent=data.summary.warnings;[...new Set(findingRows.map(f=>f.ruleId))].sort().forEach(v=>option('rule-filter',v));[...new Set(assetRows.map(a=>a.assetClass))].sort().forEach(v=>option('class-filter',v));[...new Set(assetRows.flatMap(a=>a.chunkIds||[]))].sort((a,b)=>a-b).forEach(v=>option('chunk-filter',v));[...new Set(assetRows.flatMap(a=>a.assetBundles||[]))].sort().forEach(v=>option('bundle-filter',v));
 if(diff){const summary=document.getElementById('comparison-summary'),assetChanges=diff.assetChanges||[],edgeChanges=diff.edgeChanges||[],sizeChanges=diff.sizeChanges||[],findingChanges=diff.findingChanges||[];summary.innerHTML=`<strong>Baseline / candidate</strong><div class="muted">${assetChanges.length} asset changes · ${edgeChanges.length} dependency changes · ${sizeChanges.length} size changes · ${findingChanges.length} finding changes</div>${assetChanges.length?`<details><summary>Asset changes</summary>${assetChanges.map(c=>esc(`${c.kind}: ${c.baselinePath||'—'} → ${c.candidatePath||'—'}${(c.fields||[]).length?` [${c.fields.join(', ')}]`:''}`)).join('\n')}</details>`:''}${edgeChanges.length?`<details><summary>Dependency changes</summary>${edgeChanges.map(c=>esc(`${c.kind}: ${c.source} → ${c.target}`)).join('\n')}</details>`:''}`}
 function selected(){return{sev:controls['severity-filter'].value,rule:controls['rule-filter'].value,cls:controls['class-filter'].value,q:controls['path-search'].value.toLowerCase(),chunk:controls['chunk-filter'].value,bundle:controls['bundle-filter'].value,change:controls['change-filter'].value,sort:controls['size-sort'].value}}
 function assetMatches(a,f){const isChanged=changed.has(a.objectPath);return(!f.cls||a.assetClass===f.cls)&&(!f.q||a.objectPath.toLowerCase().includes(f.q))&&(!f.chunk||(a.chunkIds||[]).map(String).includes(f.chunk))&&(!f.bundle||(a.assetBundles||[]).includes(f.bundle))&&(!f.change||(f.change==='changed'?isChanged:!isChanged))}
+const findingMatches=(x,f)=>{const a=assetMap.get(x.assetPath);if(a)return assetMatches(a,f);const baselineChanged=x.baselineState==='new'||x.baselineState==='worsened';return(!f.cls||x.assetPath===f.cls)&&(!f.q||x.assetPath.toLowerCase().includes(f.q))&&!f.chunk&&!f.bundle&&(!f.change||(f.change==='changed'?baselineChanged:!baselineChanged))};
 function sortAssets(rows,mode){rows.sort((a,b)=>mode==='size-desc'?(b.cookedBytes||0)-(a.cookedBytes||0):mode==='delta-desc'?(deltas.get(b.objectPath)||0)-(deltas.get(a.objectPath)||0):a.objectPath.localeCompare(b.objectPath));return rows}
-function render(){const f=selected(),visibleAssets=sortAssets(assetRows.filter(a=>assetMatches(a,f)),f.sort),visiblePaths=new Set(visibleAssets.map(a=>a.objectPath));let findings=findingRows.filter(x=>(!f.sev||x.severity===f.sev)&&(!f.rule||x.ruleId===f.rule)&&visiblePaths.has(x.assetPath));findings.sort((a,b)=>f.sort==='size-desc'?((assetMap.get(b.assetPath)||{}).cookedBytes||0)-((assetMap.get(a.assetPath)||{}).cookedBytes||0):f.sort==='delta-desc'?(deltas.get(b.assetPath)||0)-(deltas.get(a.assetPath)||0):a.assetPath.localeCompare(b.assetPath));document.getElementById('findings').innerHTML=findings.length?findings.map(x=>{const a=assetMap.get(x.assetPath)||{},path=(x.dependencyPath||[]).map(e=>`${e.source} --${e.kind}--> ${e.target}`).join('\n'),size=a.cookedBytes==null?'unavailable':`${a.cookedBytes} B`;return `<tr data-severity="${esc(x.severity)}"><td><span class="pill">${esc(x.severity)}</span></td><td>${esc(x.ruleId)}<div class="muted">${esc(x.baselineState)}</div></td><td>${esc(x.assetPath)}</td><td>${esc(a.assetClass)}</td><td>${esc(x.message)}${path?`<details><summary>Full dependency chain</summary>${esc(path)}</details>`:''}</td><td>${esc(size)}</td></tr>`}).join(''):`<tr><td colspan="6" class="empty">No findings match the current filters.</td></tr>`;document.getElementById('assets').innerHTML=visibleAssets.length?visibleAssets.map(a=>{const dependency=(a.dependencies||[]).map(e=>`${e.kind} → ${e.target}`).join('\n'),delta=deltas.get(a.objectPath),size=a.cookedBytes==null?'unavailable':`${a.cookedBytes} B`;return `<tr><td>${esc(a.objectPath)}</td><td>${esc(a.assetClass)}</td><td>${esc(size)}</td><td>${delta==null?'—':esc(`${delta>=0?'+':''}${delta} B`)}</td><td>${esc((a.chunkIds||[]).join(', ')||'—')}</td><td>${esc((a.assetBundles||[]).join(', ')||'—')}</td><td>${esc(a.primaryAssetId||'—')}${dependency?`<details><summary>${a.dependencies.length} dependencies</summary>${esc(dependency)}</details>`:''}</td></tr>`}).join(''):`<tr><td colspan="7" class="empty">No assets match the current filters.</td></tr>`}
+function render(){const f=selected(),visibleAssets=sortAssets(assetRows.filter(a=>assetMatches(a,f)),f.sort);let findings=findingRows.filter(x=>(!f.sev||x.severity===f.sev)&&(!f.rule||x.ruleId===f.rule)&&findingMatches(x,f));findings.sort((a,b)=>f.sort==='size-desc'?((assetMap.get(b.assetPath)||{}).cookedBytes||b.observedBytes||0)-((assetMap.get(a.assetPath)||{}).cookedBytes||a.observedBytes||0):f.sort==='delta-desc'?(deltas.get(b.assetPath)||0)-(deltas.get(a.assetPath)||0):a.assetPath.localeCompare(b.assetPath));document.getElementById('findings').innerHTML=findings.length?findings.map(x=>{const a=assetMap.get(x.assetPath)||{},path=(x.dependencyPath||[]).map(e=>`${e.source} --${e.kind}--> ${e.target}`).join('\n'),measured=a.cookedBytes??x.observedBytes,size=measured==null?'unavailable':`${measured} B`,budget=x.budgetBytes==null?'':` / ${x.budgetBytes} B budget`;return `<tr data-severity="${esc(x.severity)}"><td><span class="pill">${esc(x.severity)}</span></td><td>${esc(x.ruleId)}<div class="muted">${esc(x.baselineState)}</div></td><td>${esc(x.assetPath)}</td><td>${esc(a.assetClass||'Aggregate')}</td><td>${esc(x.message)}${path?`<details><summary>Full dependency chain</summary>${esc(path)}</details>`:''}</td><td>${esc(size+budget)}</td></tr>`}).join(''):`<tr><td colspan="6" class="empty">No findings match the current filters.</td></tr>`;const diagnostics=diagnosticRows.filter(x=>(!f.rule||x.ruleId===f.rule)&&(!f.q||x.assetPath.toLowerCase().includes(f.q)));document.getElementById('diagnostics').innerHTML=diagnostics.length?diagnostics.map(x=>`<tr><td>${esc(x.ruleId)}</td><td>${esc(x.assetPath||'—')}</td><td>${esc(x.code)}</td><td>${esc(x.message)}</td></tr>`).join(''):`<tr><td colspan="4" class="empty">No analysis diagnostics.</td></tr>`;document.getElementById('assets').innerHTML=visibleAssets.length?visibleAssets.map(a=>{const dependency=(a.dependencies||[]).map(e=>`${e.kind} → ${e.target}`).join('\n'),delta=deltas.get(a.objectPath),size=a.cookedBytes==null?'unavailable':`${a.cookedBytes} B`;return `<tr><td>${esc(a.objectPath)}</td><td>${esc(a.assetClass)}</td><td>${esc(size)}</td><td>${delta==null?'—':esc(`${delta>=0?'+':''}${delta} B`)}</td><td>${esc((a.chunkIds||[]).join(', ')||'—')}</td><td>${esc((a.assetBundles||[]).join(', ')||'—')}</td><td>${esc(a.primaryAssetId||'—')}${dependency?`<details><summary>${a.dependencies.length} dependencies</summary>${esc(dependency)}</details>`:''}</td></tr>`}).join(''):`<tr><td colspan="7" class="empty">No assets match the current filters.</td></tr>`}
 Object.values(controls).forEach(c=>c.addEventListener(c.tagName==='INPUT'?'input':'change',render));render();
 </script></main></body></html>
 )";
@@ -413,7 +507,7 @@ Object.values(controls).forEach(c=>c.addEventListener(c.tagName==='INPUT'?'input
 		ReportSet reports;
 		reports.json = WriteCanonicalJson(CanonicalResult(snapshot, config, analysis, diff)) + "\n";
 		reports.sarif = RenderSarif(config, analysis);
-		reports.junit = RenderJUnit(analysis);
+		reports.junit = RenderJUnit(config, analysis);
 		reports.html = RenderHtml(reports.json);
 		return reports;
 	}

@@ -45,6 +45,23 @@ foreach ($relativePath in $expected) {
   }
 }
 
+$p0Expected = @(
+  'EditorOnly\DA_EditorOnly.uasset',
+  'Runtime\DA_Runtime.uasset',
+  'MissingRef\DA_MissingRef.uasset',
+  'Primary\DA_Conflict.uasset',
+  'Duplicate\One\DA_Duplicate.uasset',
+  'Duplicate\Two\DA_Duplicate.uasset',
+  'Redirectors\OldTarget.uasset'
+)
+$p0Root = Join-Path $repositoryRoot 'SampleProject\Content\CookScopeP0Fixtures'
+foreach ($relativePath in $p0Expected) {
+  $assetPath = Join-Path $p0Root $relativePath
+  if (-not (Test-Path -LiteralPath $assetPath -PathType Leaf)) {
+    throw "Fixture builder did not create expected P0 asset: $assetPath"
+  }
+}
+
 $resourceExpected = @(
   'Textures\T_Resource.uasset',
   'Meshes\SM_Resource.uasset',
@@ -59,4 +76,4 @@ foreach ($relativePath in $resourceExpected) {
   }
 }
 
-Write-Output "PASS: generated $($expected.Count + $resourceExpected.Count) deterministic CookScope fixture assets"
+Write-Output "PASS: generated $($expected.Count + $p0Expected.Count + $resourceExpected.Count) deterministic CookScope fixture assets"

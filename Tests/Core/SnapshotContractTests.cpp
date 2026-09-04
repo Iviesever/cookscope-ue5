@@ -98,6 +98,15 @@ int main()
 	{
 		return Fail("duplicate Bundle and typed-edge facts must normalize to one semantic value");
 	}
+	const std::string selfManaged = Asset(
+		"/Game/Self/Self.Self",
+		"{\"target\":\"/Game/Self/Self.Self\",\"kind\":\"manage\"}",
+		cooked);
+	const auto normalizedSelfManaged = cookscope::ParseSnapshot(Snapshot(selfManaged));
+	if (!normalizedSelfManaged.ok || !normalizedSelfManaged.value.assets[0].dependencies.empty())
+	{
+		return Fail("Asset Manager self-ownership must not appear as a traversable dependency edge");
+	}
 
 	const auto duplicateAsset = cookscope::ParseSnapshot(Snapshot(assetA + "," + assetA));
 	if (duplicateAsset.ok || duplicateAsset.error.code != SnapshotErrorCode::DuplicateAsset ||

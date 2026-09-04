@@ -41,11 +41,12 @@ int main()
 	snapshot.assets = {asset};
 
 	const auto config = cookscope::ParseRuleConfig(
-		R"({"schema":"cookscope.rules/1","rules":[{"id":"budget.asset-size","name":"Asset budget","description":"Budget fixture","severity":"error","scope":{"include":["/Game/**"],"exclude":[]},"parameters":{"budgetBytes":1024,"measurement":"actual-cooked"},"exceptions":[],"baseline":"report-all","failThreshold":"error","helpUri":"docs/rules/budget.md"}]})");
+		R"({"schema":"cookscope.rules/1","rules":[{"id":"budget.asset-size","name":"Asset budget","description":"Blocking fixture","severity":"error","scope":{"include":["/Game/**"],"exclude":[]},"parameters":{"budgetBytes":1024,"measurement":"actual-cooked"},"exceptions":[],"baseline":"report-all","failThreshold":"error","helpUri":"docs/rules/budget.md"},{"id":"budget.project-cooked","name":"Project budget","description":"Non-blocking aggregate fixture","severity":"warning","scope":{"include":["/Game/**"],"exclude":[]},"parameters":{"budgetBytes":1024,"measurement":"actual-cooked"},"exceptions":[],"baseline":"report-all","failThreshold":"error","helpUri":"docs/rules/budget.md"},{"id":"path.forbidden","name":"Clean path","description":"Passing rule fixture","severity":"error","scope":{"include":["/Game/**"],"exclude":[]},"parameters":{"patterns":["/Never/**"]},"exceptions":[],"baseline":"report-all","failThreshold":"error","helpUri":"docs/rules/path.md"},{"id":"resource.texture","name":"Diagnostic fixture","description":"Invalid rule parameters","severity":"warning","scope":{"include":["/Game/**"],"exclude":[]},"parameters":{},"exceptions":[],"baseline":"report-all","failThreshold":"error","helpUri":"docs/rules/resource.md"}]})");
 	if (!config.ok) return Fail("report fixture rule config must parse");
 
 	cookscope::AnalysisResult analysis = cookscope::Evaluate(snapshot, config.value);
-	if (analysis.findings.size() != 1) return Fail("report fixture must contain one finding");
+	if (analysis.findings.size() != 2 || analysis.diagnostics.size() != 1)
+		return Fail("report fixture must contain blocking, non-blocking aggregate, clean, and diagnostic rule outcomes");
 	cookscope::SnapshotDiffResult diff;
 	diff.comparable = true;
 	diff.assetChanges.push_back({cookscope::AssetChangeKind::Modified, asset.objectPath, asset.objectPath, {"cookedSize"}});
@@ -74,9 +75,12 @@ int main()
 		return Fail("Rule ID, asset identity, and Unicode must remain consistent across reports");
 	}
 	if (first.sarif.find("\"version\":\"2.1.0\"") == std::string::npos ||
-		first.junit.find("<testsuite tests=\"1\" failures=\"1\" errors=\"0\"") == std::string::npos)
+		first.junit.find("<testsuite tests=\"4\" failures=\"1\" errors=\"1\"") == std::string::npos ||
+		first.junit.find("name=\"path.forbidden\"") == std::string::npos ||
+		first.junit.find("name=\"budget.project-cooked\"") == std::string::npos ||
+		first.junit.find("<error message=\"1 diagnostics\"") == std::string::npos)
 	{
-		return Fail("SARIF version and JUnit failure semantics must be explicit");
+		return Fail("SARIF version and per-rule JUnit pass/failure/error semantics must be explicit");
 	}
 	if (first.html.find("https://") != std::string::npos || first.html.find("http://") != std::string::npos ||
 		first.html.find("<link") != std::string::npos || first.html.find("<script src=") != std::string::npos)
@@ -100,6 +104,11 @@ int main()
 		first.json.find("\"dependencies\":[{\"kind\":\"soft\",\"target\":\"/Game/Shared/T_Common.T_Common\"}]") == std::string::npos)
 	{
 		return Fail("canonical JSON must expose the exact Chunk, Bundle, and dependency data used by HTML");
+	}
+	if (first.html.find("const findingMatches=") == std::string::npos ||
+		first.html.find("visiblePaths.has(x.assetPath)") != std::string::npos)
+	{
+		return Fail("HTML must retain aggregate findings that do not map to a concrete asset row");
 	}
 	if (first.html.find("</script><script>alert(1)</script>") != std::string::npos ||
 		first.html.find("\\u003c/script>\\u003cscript>alert(1)\\u003c/script>") == std::string::npos)

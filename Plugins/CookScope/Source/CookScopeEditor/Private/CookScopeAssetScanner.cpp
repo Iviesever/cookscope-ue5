@@ -171,7 +171,10 @@ namespace
 	}
 }
 
-FCookScopeScanResult FCookScopeAssetScanner::ScanPath(const FString& PackagePath, const FString& SourceSha)
+FCookScopeScanResult FCookScopeAssetScanner::ScanPath(
+	const FString& PackagePath,
+	const FString& SourceSha,
+	const FCookScopeScanOptions& Options)
 {
 	FCookScopeScanResult Result;
 	if (PackagePath.IsEmpty())
@@ -179,17 +182,41 @@ FCookScopeScanResult FCookScopeAssetScanner::ScanPath(const FString& PackagePath
 		Result.Error = TEXT("Package path must not be empty");
 		return Result;
 	}
+	if (Options.MaximumAssets <= 0 || Options.MaximumDependencies <= 0)
+	{
+		Result.Error = TEXT("Asset and dependency limits must be positive");
+		return Result;
+	}
+	auto Cancelled = [&]() {
+		if (!Options.ShouldCancel || !Options.ShouldCancel()) return false;
+		Result.bCancelled = true;
+		Result.Error = TEXT("Asset Registry scan cancelled or timed out");
+		return true;
+	};
+	if (Cancelled()) return Result;
 
 	FAssetRegistryModule& RegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
 	IAssetRegistry& Registry = RegistryModule.Get();
-	Registry.ScanPathsSynchronous({PackagePath}, true);
+	if (Options.bDiscoverOnDisk) Registry.ScanPathsSynchronous({PackagePath}, true);
 	UAssetManager& AssetManager = UAssetManager::Get();
-	AssetManager.UpdateManagementDatabase(EUpdateManagementDatabaseFlags::BuildChunkMap | EUpdateManagementDatabaseFlags::ForceRefresh);
+	if (Options.bRefreshAssetManager)
+	{
+		AssetManager.UpdateManagementDatabase(EUpdateManagementDatabaseFlags::BuildChunkMap | EUpdateManagementDatabaseFlags::ForceRefresh);
+	}
 
 	TArray<FAssetData> Assets;
 	if (!Registry.GetAssetsByPath(FName(*PackagePath), Assets, true, true))
 	{
 		Result.Error = FString::Printf(TEXT("Asset Registry could not scan path: %s"), *PackagePath);
+		return Result;
+	}
+	if (Cancelled()) return Result;
+	if (Assets.Num() > Options.MaximumAssets)
+	{
+		Result.Error = FString::Printf(
+			TEXT("Asset Registry result exceeded asset limit %d for %s"),
+			Options.MaximumAssets,
+			*PackagePath);
 		return Result;
 	}
 	Assets.Sort([](const FAssetData& Left, const FAssetData& Right) {
@@ -201,8 +228,10 @@ FCookScopeScanResult FCookScopeAssetScanner::ScanPath(const FString& PackagePath
 	Snapshot.provenance.platform = ScannerToUtf8(FPlatformProperties::IniPlatformName());
 	Snapshot.provenance.cookConfiguration = "EditorAssetRegistry";
 	Snapshot.provenance.sourceSha = ScannerToUtf8(SourceSha);
+	int64 DependencyCount = 0;
 	for (const FAssetData& Asset : Assets)
 	{
+		if (Cancelled()) return Result;
 		cookscope::AssetRecord Record;
 		Record.objectPath = ScannerToUtf8(Asset.GetSoftObjectPath().ToString());
 		Record.packageName = ScannerToUtf8(Asset.PackageName.ToString());
@@ -244,8 +273,23 @@ FCookScopeScanResult FCookScopeAssetScanner::ScanPath(const FString& PackagePath
 				return Left.target == Right.target && Left.kind == Right.kind;
 			}),
 			Record.dependencies.end());
+		Record.dependencies.erase(
+			std::remove_if(Record.dependencies.begin(), Record.dependencies.end(), [&](const cookscope::DependencyEdge& Dependency) {
+				return Dependency.kind == cookscope::DependencyKind::Manage && Dependency.target == Record.objectPath;
+			}),
+			Record.dependencies.end());
+		DependencyCount += static_cast<int64>(Record.dependencies.size());
+		if (DependencyCount > Options.MaximumDependencies)
+		{
+			Result.Error = FString::Printf(
+				TEXT("Asset Registry result exceeded dependency limit %d for %s"),
+				Options.MaximumDependencies,
+				*PackagePath);
+			return Result;
+		}
 		Snapshot.assets.push_back(std::move(Record));
 	}
+	if (Cancelled()) return Result;
 
 	const cookscope::SnapshotParseResult Normalized = cookscope::ParseSnapshot(cookscope::WriteCanonicalSnapshot(Snapshot));
 	if (!Normalized.ok)

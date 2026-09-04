@@ -45,7 +45,10 @@ int main()
 	baselineA.primaryAssetId = "Type:A";
 	baselineA.chunkIds = {0};
 	baselineA.assetBundles = {"Default"};
-	baselineA.dependencies = {{"/Game/B.B", DependencyKind::Soft}};
+	baselineA.dependencies = {
+		{"/Game/B.B", DependencyKind::Soft},
+		{"/Game/Multi.Multi", DependencyKind::Hard},
+		{"/Game/Multi.Multi", DependencyKind::Manage}};
 	cookscope::AssetRecord baselineRemoved = Asset("/Game/Removed.Removed", 20);
 	cookscope::AssetRecord baselineRenamed = Asset("/Game/Old.Old", 10);
 	baselineRenamed.tags = {{"StableAssetId", "rename-fixture"}};
@@ -56,10 +59,14 @@ int main()
 	candidateA.assetBundles = {"UI"};
 	candidateA.dependencies = {
 		{"/Game/B.B", DependencyKind::Hard},
-		{"/Game/C.C", DependencyKind::Soft}};
+		{"/Game/C.C", DependencyKind::Soft},
+		{"/Game/Multi.Multi", DependencyKind::Hard},
+		{"/Game/Multi.Multi", DependencyKind::Soft}};
 	cookscope::AssetRecord candidateAdded = Asset("/Game/C.C", 30);
-	cookscope::AssetRecord candidateRenamed = Asset("/Game/New.New", 10);
+	cookscope::AssetRecord candidateRenamed = Asset("/Game/New.New", 15);
 	candidateRenamed.tags = {{"StableAssetId", "rename-fixture"}};
+	candidateRenamed.assetBundles = {"Renamed"};
+	candidateRenamed.dependencies = {{"/Game/C.C", DependencyKind::Manage}};
 
 	const cookscope::Snapshot baseline = Snapshot({baselineRenamed, baselineRemoved, baselineA});
 	const cookscope::Snapshot candidate = Snapshot({candidateRenamed, candidateAdded, candidateA});
@@ -85,6 +92,13 @@ int main()
 	{
 		return Fail("added, removed, modified, and StableAssetId rename changes are required");
 	}
+	for (const std::string_view field : {"assetBundles", "cookedSize", "dependencies"})
+	{
+		if (std::find(renamed->fields.begin(), renamed->fields.end(), field) == renamed->fields.end())
+		{
+			return Fail("renamed asset must retain every simultaneous semantic change");
+		}
+	}
 	for (const std::string_view field : {"assetBundles", "chunkIds", "cookedSize", "dependencies", "primaryAssetId"})
 	{
 		if (std::find(modified->fields.begin(), modified->fields.end(), field) == modified->fields.end())
@@ -104,9 +118,23 @@ int main()
 	{
 		return Fail("edge additions and typed changes must remain explicit");
 	}
-	if (result.sizeChanges.size() != 1 || result.sizeChanges[0].assetPath != "/Game/A.A" || result.sizeChanges[0].deltaBytes != 50)
+	const auto multiTypeChange = std::find_if(result.edgeChanges.begin(), result.edgeChanges.end(), [](const cookscope::EdgeChange& change) {
+		return change.kind == EdgeChangeKind::TypeChanged && change.source == "/Game/A.A" &&
+			change.target == "/Game/Multi.Multi" && change.beforeKind == DependencyKind::Manage && change.afterKind == DependencyKind::Soft;
+	});
+	const auto renamedEdge = std::find_if(result.edgeChanges.begin(), result.edgeChanges.end(), [](const cookscope::EdgeChange& change) {
+		return change.kind == EdgeChangeKind::Added && change.source == "/Game/New.New" &&
+			change.target == "/Game/C.C" && change.afterKind == DependencyKind::Manage;
+	});
+	if (multiTypeChange == result.edgeChanges.end() || renamedEdge == result.edgeChanges.end())
 	{
-		return Fail("actual cooked size delta must be exact and signed");
+		return Fail("multi-kind and renamed dependency changes must remain complete");
+	}
+	if (result.sizeChanges.size() != 2 ||
+		result.sizeChanges[0].assetPath != "/Game/A.A" || result.sizeChanges[0].deltaBytes != 50 ||
+		result.sizeChanges[1].assetPath != "/Game/New.New" || result.sizeChanges[1].deltaBytes != 5)
+	{
+		return Fail("same-path and renamed actual cooked size deltas must be exact and signed");
 	}
 
 	cookscope::Snapshot reorderedBaseline = baseline;

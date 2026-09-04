@@ -19,6 +19,9 @@ public:
 	UPROPERTY(EditAnywhere, Category = "CookScope Fixture")
 	TSoftObjectPtr<UCookScopeFixtureAsset> SoftReference;
 
+	UPROPERTY(EditAnywhere, Category = "CookScope Fixture")
+	TSoftObjectPtr<UObject> MissingReference;
+
 	UPROPERTY(EditAnywhere, Category = "CookScope Fixture", meta = (AssetBundles = "Default"))
 	TSoftObjectPtr<UCookScopeFixtureAsset> BundledReference;
 
@@ -27,4 +30,10 @@ public:
 
 	UPROPERTY(EditAnywhere, Category = "CookScope Fixture", AssetRegistrySearchable)
 	FName FixtureId;
+
+	UPROPERTY(EditAnywhere, Category = "CookScope Fixture", AssetRegistrySearchable)
+	FString AlwaysCook;
+
+	UPROPERTY(EditAnywhere, Category = "CookScope Fixture", AssetRegistrySearchable)
+	FString NeverCook;
 };

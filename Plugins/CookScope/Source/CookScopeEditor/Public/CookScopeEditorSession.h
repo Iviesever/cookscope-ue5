@@ -22,6 +22,11 @@ struct COOKSCOPEEDITOR_API FCookScopeEditorScanSettings
 	FString CookRegistryPath;
 	FString CookPlatform = TEXT("Windows");
 	FString CookConfiguration = TEXT("Development");
+	int32 MaximumAssets = 4096;
+	int32 MaximumDependencies = 65536;
+	int64 MaximumConfigBytes = 4 * 1024 * 1024;
+	int64 MaximumBaselineBytes = 64 * 1024 * 1024;
+	int64 MaximumCookRegistryBytes = 512ll * 1024ll * 1024ll;
 };
 
 struct COOKSCOPEEDITOR_API FCookScopeEditorFilter

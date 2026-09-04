@@ -34,6 +34,13 @@ namespace
 		if (Found == Asset->tags.end()) return false;
 		return !Found->second.empty() && Found->second != "0";
 	}
+
+	std::string TagValue(const cookscope::AssetRecord* Asset, const char* Name)
+	{
+		if (!Asset) return {};
+		const auto Found = Asset->tags.find(Name);
+		return Found == Asset->tags.end() ? std::string{} : Found->second;
+	}
 }
 
 bool FCookScopeResourceMetadataTest::RunTest(const FString& Parameters)
@@ -65,6 +72,19 @@ bool FCookScopeResourceMetadataTest::RunTest(const FString& Parameters)
 	const cookscope::AnalysisResult Analysis = cookscope::Evaluate(Scan.Snapshot, Config.value);
 	TestEqual(TEXT("Real UE metadata produces all eight resource findings"), static_cast<int32>(Analysis.findings.size()), 8);
 	TestEqual(TEXT("Real UE resource metadata has no unavailable diagnostics"), static_cast<int32>(Analysis.diagnostics.size()), 0);
+
+	const std::string PositiveJson =
+		std::string("{\"schema\":\"cookscope.rules/1\",\"rules\":[") +
+		"{\"id\":\"resource.skeletal-mesh\",\"name\":\"Skeletal Mesh\",\"description\":\"Real legal fixture\",\"severity\":\"warning\",\"scope\":{\"include\":[\"/Game/**\"],\"exclude\":[]},\"parameters\":{\"maxVertices\":" + TagValue(SkeletalMesh, "MeshVertices") + "},\"exceptions\":[],\"baseline\":\"report-all\",\"failThreshold\":\"error\",\"helpUri\":\"docs/rules/resource.md\"}," +
+		"{\"id\":\"resource.sound\",\"name\":\"Sound\",\"description\":\"Real legal fixture\",\"severity\":\"warning\",\"scope\":{\"include\":[\"/Game/**\"],\"exclude\":[]},\"parameters\":{\"maxDurationMs\":" + TagValue(Sound, "SoundDurationMs") + ",\"allowedFormats\":[\"" + TagValue(Sound, "SoundFormat") + "\"]},\"exceptions\":[],\"baseline\":\"report-all\",\"failThreshold\":\"error\",\"helpUri\":\"docs/rules/resource.md\"}," +
+		"{\"id\":\"resource.static-mesh\",\"name\":\"Static Mesh\",\"description\":\"Real legal fixture\",\"severity\":\"warning\",\"scope\":{\"include\":[\"/Game/**\"],\"exclude\":[]},\"parameters\":{\"maxTriangles\":" + TagValue(StaticMesh, "MeshTriangles") + "},\"exceptions\":[],\"baseline\":\"report-all\",\"failThreshold\":\"error\",\"helpUri\":\"docs/rules/resource.md\"}," +
+		"{\"id\":\"resource.texture\",\"name\":\"Texture\",\"description\":\"Real legal fixture\",\"severity\":\"warning\",\"scope\":{\"include\":[\"/Game/**\"],\"exclude\":[]},\"parameters\":{\"maxWidth\":" + TagValue(Texture, "TextureWidth") + ",\"maxHeight\":" + TagValue(Texture, "TextureHeight") + ",\"minMips\":" + TagValue(Texture, "TextureMips") + ",\"allowedFormats\":[\"" + TagValue(Texture, "TextureFormat") + "\"]},\"exceptions\":[],\"baseline\":\"report-all\",\"failThreshold\":\"error\",\"helpUri\":\"docs/rules/resource.md\"}]}";
+	const cookscope::RuleConfigParseResult PositiveConfig = cookscope::ParseRuleConfig(PositiveJson);
+	TestTrue(TEXT("Real legal resource config parses"), PositiveConfig.ok);
+	if (!PositiveConfig.ok) return false;
+	const cookscope::AnalysisResult Positive = cookscope::Evaluate(Scan.Snapshot, PositiveConfig.value);
+	TestEqual(TEXT("Real legal resource thresholds produce no findings"), static_cast<int32>(Positive.findings.size()), 0);
+	TestEqual(TEXT("Real legal resource thresholds produce no diagnostics"), static_cast<int32>(Positive.diagnostics.size()), 0);
 	return true;
 }
 

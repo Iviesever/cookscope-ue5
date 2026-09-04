@@ -76,29 +76,35 @@ namespace cookscope
 			const AssetRecord& candidate,
 			std::vector<EdgeChange>& output)
 		{
-			std::map<std::string, DependencyKind, std::less<>> before;
-			std::map<std::string, DependencyKind, std::less<>> after;
-			for (const DependencyEdge& edge : baseline.dependencies) before.emplace(edge.target, edge.kind);
-			for (const DependencyEdge& edge : candidate.dependencies) after.emplace(edge.target, edge.kind);
+			using KindSet = std::set<DependencyKind>;
+			std::map<std::string, KindSet, std::less<>> before;
+			std::map<std::string, KindSet, std::less<>> after;
+			for (const DependencyEdge& edge : baseline.dependencies) before[edge.target].insert(edge.kind);
+			for (const DependencyEdge& edge : candidate.dependencies) after[edge.target].insert(edge.kind);
 			std::set<std::string, std::less<>> targets;
 			for (const auto& [target, ignored] : before) { (void)ignored; targets.insert(target); }
 			for (const auto& [target, ignored] : after) { (void)ignored; targets.insert(target); }
 			for (const std::string& target : targets)
 			{
-				const auto oldEdge = before.find(target);
-				const auto newEdge = after.find(target);
-				if (oldEdge == before.end())
+				KindSet oldKinds = before.contains(target) ? before.at(target) : KindSet{};
+				KindSet newKinds = after.contains(target) ? after.at(target) : KindSet{};
+				for (auto iterator = oldKinds.begin(); iterator != oldKinds.end();)
 				{
-					output.push_back({EdgeChangeKind::Added, candidate.objectPath, target, std::nullopt, newEdge->second});
+					if (newKinds.erase(*iterator) != 0) iterator = oldKinds.erase(iterator);
+					else ++iterator;
 				}
-				else if (newEdge == after.end())
+				auto oldKind = oldKinds.begin();
+				auto newKind = newKinds.begin();
+				while (oldKind != oldKinds.end() && newKind != newKinds.end())
 				{
-					output.push_back({EdgeChangeKind::Removed, candidate.objectPath, target, oldEdge->second, std::nullopt});
+					output.push_back({EdgeChangeKind::TypeChanged, candidate.objectPath, target, *oldKind, *newKind});
+					++oldKind;
+					++newKind;
 				}
-				else if (oldEdge->second != newEdge->second)
-				{
-					output.push_back({EdgeChangeKind::TypeChanged, candidate.objectPath, target, oldEdge->second, newEdge->second});
-				}
+				for (; oldKind != oldKinds.end(); ++oldKind)
+					output.push_back({EdgeChangeKind::Removed, candidate.objectPath, target, *oldKind, std::nullopt});
+				for (; newKind != newKinds.end(); ++newKind)
+					output.push_back({EdgeChangeKind::Added, candidate.objectPath, target, std::nullopt, *newKind});
 			}
 		}
 
@@ -107,6 +113,23 @@ namespace cookscope
 			const std::uint64_t magnitude = before > after ? before - after : after - before;
 			if (magnitude > static_cast<std::uint64_t>(std::numeric_limits<std::int64_t>::max())) return std::nullopt;
 			return before > after ? -static_cast<std::int64_t>(magnitude) : static_cast<std::int64_t>(magnitude);
+		}
+
+		void AppendSizeChange(
+			const AssetRecord& baseline,
+			const AssetRecord& candidate,
+			const std::string& resultPath,
+			std::vector<CookedSizeChange>& output)
+		{
+			if (baseline.cookedSize.kind != MeasurementKind::ActualCooked ||
+				candidate.cookedSize.kind != MeasurementKind::ActualCooked ||
+				!baseline.cookedSize.bytes || !candidate.cookedSize.bytes ||
+				baseline.cookedSize.bytes == candidate.cookedSize.bytes)
+			{
+				return;
+			}
+			const auto delta = SignedDelta(*baseline.cookedSize.bytes, *candidate.cookedSize.bytes);
+			if (delta) output.push_back({resultPath, *baseline.cookedSize.bytes, *candidate.cookedSize.bytes, *delta});
 		}
 
 		std::string DiffAssetChangeName(AssetChangeKind kind)
@@ -221,12 +244,7 @@ namespace cookscope
 			std::vector<std::string> fields = ChangedFields(*asset, *same->second);
 			if (!fields.empty()) result.assetChanges.push_back({AssetChangeKind::Modified, path, path, std::move(fields)});
 			DiffEdges(*asset, *same->second, result.edgeChanges);
-			if (asset->cookedSize.kind == MeasurementKind::ActualCooked && same->second->cookedSize.kind == MeasurementKind::ActualCooked &&
-				asset->cookedSize.bytes && same->second->cookedSize.bytes && asset->cookedSize.bytes != same->second->cookedSize.bytes)
-			{
-				const auto delta = SignedDelta(*asset->cookedSize.bytes, *same->second->cookedSize.bytes);
-				if (delta) result.sizeChanges.push_back({path, *asset->cookedSize.bytes, *same->second->cookedSize.bytes, *delta});
-			}
+			AppendSizeChange(*asset, *same->second, path, result.sizeChanges);
 		}
 
 		std::map<std::string, std::string, std::less<>> beforeByStableId;
@@ -247,7 +265,15 @@ namespace cookscope
 			if (renamed == afterByStableId.end()) continue;
 			matchedBefore.insert(oldPath);
 			matchedAfter.insert(renamed->second);
-			result.assetChanges.push_back({AssetChangeKind::Renamed, oldPath, renamed->second, {}});
+			const AssetRecord& oldAsset = *before.at(oldPath);
+			const AssetRecord& newAsset = *after.at(renamed->second);
+			result.assetChanges.push_back({
+				AssetChangeKind::Renamed,
+				oldPath,
+				renamed->second,
+				ChangedFields(oldAsset, newAsset)});
+			DiffEdges(oldAsset, newAsset, result.edgeChanges);
+			AppendSizeChange(oldAsset, newAsset, renamed->second, result.sizeChanges);
 		}
 
 		for (const auto& [path, ignored] : before)
