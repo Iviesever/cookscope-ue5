@@ -2,7 +2,7 @@
 
 ## Current state
 
-The dedicated local repository has a verified contract baseline at `2bede4a50f47ee332e11f2dfbb90beb596c9dc0e`. Work is on `feat/cookscope-0.1`. MQB Core/CLI, UE 5.8 Editor build, real Editor-Cmd Automation/Tab, five-way Commandlet E2E, and an exploratory BuildPlugin run are GREEN. Acceptance remains fail-closed until these results are rerun on the clean source commit.
+The dedicated local repository has a verified contract baseline at `2bede4a50f47ee332e11f2dfbb90beb596c9dc0e`. Work is on `feat/cookscope-0.1`. At source SHA `4dbbbaebadca79944b38ee52f4e3981d90e1dd01`, MQB Core/CLI, UE 5.8 Editor build, real Editor-Cmd Automation/Tab, and five-way Commandlet E2E are GREEN. Source-bound BuildPlugin is externally blocked by an unrelated AuthorityArena UE pipeline taking the global UBT mutex between RunUAT stages; do not terminate it.
 
 ## Immutable constraints
 
@@ -16,4 +16,4 @@ The dedicated local repository has a verified contract baseline at `2bede4a50f47
 
 ## Resume point
 
-Commit the current UE source/scripts, rerun every PACT-00 check on the clean SHA, generate the authoritative source-bound plugin package, then start PACT-10 strict model/JSON tests.
+Continue PACT-10 strict model/JSON work under MQB while the unrelated UE pipeline runs. Retry source-bound BuildPlugin from a fresh package path only after the global UBT mutex is free.

@@ -65,6 +65,17 @@ Done when: PACT-00 has a reproducible MQB core/helper build, real UE plugin load
 - UBT repeatedly reported that UBA could not bind local port 1345 and then used its local executor successfully. No unrelated process was terminated to suppress this environmental warning.
 - MQB discovery regression after packaging: the initially valid exclusion list omitted then-nonexistent `Artifacts`/`SampleProject`, so discovery later found copied package and UE adapter sources. Once those directories existed, the strict list was updated to exclude them and the three UE-only module directories. MQB then reported exactly three translation units and the full Core/CLI suite passed.
 
+## 2026-09-05 — PACT-00 clean source-SHA replay
+
+- Source code SHA under test: `4dbbbaebadca79944b38ee52f4e3981d90e1dd01`; the worktree was clean when each replay began.
+- `scripts/Probe-Mqb.ps1`: exit `0`; clean 3 compile misses/1 link miss in 3341.499 ms; immediate no-op 3 compile hits/1 link hit/0 misses in 7.947 ms; intentional compile failure returned `4`.
+- Bound MQB artifact: `.mqb/bin/CookScopeCli.exe`, 47,616 bytes, SHA-256 `DA8A15BCB3F232008929DA6F115254AA4D1F5907EB208F028E52B02D4E72961F`.
+- `scripts/Test.ps1`: exit `0`; bootstrap Core, strict arguments, and process-level CLI report/exit tests passed with exactly three MQB-discovered translation units.
+- `scripts/Test-Unreal.ps1`: exit `0`; UBT Editor Development succeeded, real Editor-Cmd Automation found and passed exactly one PACT-00 test that invoked/closed the Nomad Tab, and five real Commandlet processes returned `0/2/3/4/5` with canonical JSON checks.
+- Source-bound BuildPlugin attempt 1: HostProject UHT/UnrealEditor Development succeeded, then UnrealGame Development failed `ConflictingInstance`/exit `10` because an unrelated `AuthorityArenaEditor` UBT held the global mutex. AutomationTool labels exit 10 `Error_SDKNotFound`, but the direct cause in the log is the mutex, not a missing SDK.
+- The unrelated process ended naturally; no process was terminated. Source-bound BuildPlugin attempt 2 used a new package path and again completed its Editor stage before the concurrently running `AuthorityArena.GAS` Editor/parent pipeline took the global UBT mutex at the Game stage.
+- Incomplete package directories are retained under ignored `Artifacts/Packages/` as failure evidence and will not be overwritten or uploaded. The authoritative source-bound package gate remains blocked until the unrelated UE pipeline releases the global mutex.
+
 ## Next actions
 
 1. Commit the PACT-00 UE source and scripts after final diff/generated-file checks.
