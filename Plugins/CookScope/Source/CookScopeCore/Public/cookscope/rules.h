@@ -24,6 +24,11 @@ namespace cookscope
 		std::string relatedAsset;
 		std::optional<DependencyKind> dependencyKind;
 		std::vector<DependencyStep> dependencyPath;
+		std::string metric;
+		std::optional<std::uint64_t> observedValue;
+		std::optional<std::uint64_t> limitValue;
+		std::string observedText;
+		std::string expectedText;
 	};
 
 	enum class AnalysisDiagnosticCode : std::uint8_t

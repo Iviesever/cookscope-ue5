@@ -39,6 +39,14 @@ Done when: every P0 rule family has positive/negative fixtures, stable findings,
 - Repeated `scripts/Test.ps1`: exit `0`; all rule/graph/core/file/CLI tests passed with exactly eight MQB production translation units.
 - UE Editor Development build then compiled and linked `rules.cpp` into CookScopeCore successfully, covering the UBT Unity/DLL path before commit.
 
+## 2026-09-05 — PACT-30 resource metadata rules
+
+- RED: `ResourceRuleContractTests` failed compilation because Finding lacked metric, numeric observed/limit, and text observed/expected evidence fields.
+- GREEN: Texture width, height, Mip count, and format; Static Mesh triangles; Skeletal Mesh vertices; Sound duration and format produced eight measured findings with zero diagnostics.
+- Numeric metadata findings keep a metric and unsigned observed/limit values while measurement kind stays `Unavailable`; they are not mislabeled as disk or actual-cooked byte sizes. Format findings keep explicit observed/allowed text.
+- Missing or malformed resource tags produce `MeasurementUnavailable` diagnostics rather than zero-valued violations.
+- Fresh `scripts/Test.ps1`: exit `0`; all Core/file/rule/CLI tests passed, including the new resource target; MQB production discovery remains eight translation units.
+
 ## 2026-09-05 — PACT-20 deterministic typed graph core
 
 - RED: `mqb run Tests/Core/GraphContractTests.cpp --no-discover -I Plugins/CookScope/Source/CookScopeCore/Public --std 20 --profile release -o CookScopeGraphContractTests` exited `1` with C1083 because `cookscope/graph.h` did not exist.

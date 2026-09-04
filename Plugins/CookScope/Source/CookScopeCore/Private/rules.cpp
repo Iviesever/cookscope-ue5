@@ -408,6 +408,182 @@ namespace cookscope
 				result.findings.push_back(std::move(finding));
 			}
 		}
+
+		bool ReadTagUnsigned(const AssetRecord& asset, std::string_view tag, std::uint64_t& output)
+		{
+			const auto found = asset.tags.find(tag);
+			if (found == asset.tags.end()) return false;
+			const auto parsed = std::from_chars(found->second.data(), found->second.data() + found->second.size(), output);
+			return parsed.ec == std::errc{} && parsed.ptr == found->second.data() + found->second.size();
+		}
+
+		std::vector<std::string> ReadAllowedFormats(const RuleDefinition& rule)
+		{
+			std::vector<std::string> formats;
+			ReadStringArrayParameter(rule, "allowedFormats", formats);
+			std::sort(formats.begin(), formats.end());
+			return formats;
+		}
+
+		std::string Join(const std::vector<std::string>& values)
+		{
+			std::string result;
+			for (std::size_t index = 0; index < values.size(); ++index)
+			{
+				if (index != 0) result += ',';
+				result += values[index];
+			}
+			return result;
+		}
+
+		void AddNumericMetric(
+			AnalysisResult& result,
+			const RuleDefinition& rule,
+			const AssetRecord& asset,
+			std::string metric,
+			std::uint64_t observed,
+			std::uint64_t limit,
+			std::string message)
+		{
+			Finding finding;
+			finding.ruleId = rule.id;
+			finding.assetPath = asset.objectPath;
+			finding.severity = rule.severity;
+			finding.message = std::move(message);
+			finding.metric = std::move(metric);
+			finding.observedValue = observed;
+			finding.limitValue = limit;
+			result.findings.push_back(std::move(finding));
+		}
+
+		void AddTextMetric(
+			AnalysisResult& result,
+			const RuleDefinition& rule,
+			const AssetRecord& asset,
+			std::string metric,
+			std::string observed,
+			std::string expected,
+			std::string message)
+		{
+			Finding finding;
+			finding.ruleId = rule.id;
+			finding.assetPath = asset.objectPath;
+			finding.severity = rule.severity;
+			finding.message = std::move(message);
+			finding.metric = std::move(metric);
+			finding.observedText = std::move(observed);
+			finding.expectedText = std::move(expected);
+			result.findings.push_back(std::move(finding));
+		}
+
+		void EvaluateTexture(const Snapshot& snapshot, const RuleDefinition& rule, AnalysisResult& result)
+		{
+			std::uint64_t maximumWidth = 0;
+			std::uint64_t maximumHeight = 0;
+			std::uint64_t minimumMips = 0;
+			const std::vector<std::string> formats = ReadAllowedFormats(rule);
+			if (!ReadUnsignedParameter(rule, "maxWidth", maximumWidth) ||
+				!ReadUnsignedParameter(rule, "maxHeight", maximumHeight) ||
+				!ReadUnsignedParameter(rule, "minMips", minimumMips) || formats.empty())
+			{
+				AddParameterDiagnostic(result, rule, "texture rule requires maxWidth, maxHeight, minMips, and allowedFormats");
+				return;
+			}
+			for (const AssetRecord& asset : snapshot.assets)
+			{
+				if (asset.assetClass != "/Script/Engine.Texture2D" || !MatchesScope(rule, asset.objectPath)) continue;
+				std::uint64_t width = 0;
+				std::uint64_t height = 0;
+				std::uint64_t mips = 0;
+				const auto format = asset.tags.find("TextureFormat");
+				if (!ReadTagUnsigned(asset, "TextureWidth", width) || !ReadTagUnsigned(asset, "TextureHeight", height) ||
+					!ReadTagUnsigned(asset, "TextureMips", mips) || format == asset.tags.end())
+				{
+					result.diagnostics.push_back({rule.id, asset.objectPath, AnalysisDiagnosticCode::MeasurementUnavailable, "texture metadata is unavailable"});
+					continue;
+				}
+				if (width > maximumWidth) AddNumericMetric(result, rule, asset, "texture-width", width, maximumWidth, "texture width exceeds limit");
+				if (height > maximumHeight) AddNumericMetric(result, rule, asset, "texture-height", height, maximumHeight, "texture height exceeds limit");
+				if (mips < minimumMips) AddNumericMetric(result, rule, asset, "texture-mips", mips, minimumMips, "texture mip count is below minimum");
+				if (std::find(formats.begin(), formats.end(), format->second) == formats.end())
+				{
+					AddTextMetric(result, rule, asset, "texture-format", format->second, Join(formats), "texture format is not allowed");
+				}
+			}
+		}
+
+		void EvaluateStaticMesh(const Snapshot& snapshot, const RuleDefinition& rule, AnalysisResult& result)
+		{
+			std::uint64_t maximum = 0;
+			if (!ReadUnsignedParameter(rule, "maxTriangles", maximum))
+			{
+				AddParameterDiagnostic(result, rule, "static mesh rule requires maxTriangles");
+				return;
+			}
+			for (const AssetRecord& asset : snapshot.assets)
+			{
+				if (asset.assetClass != "/Script/Engine.StaticMesh" || !MatchesScope(rule, asset.objectPath)) continue;
+				std::uint64_t observed = 0;
+				if (!ReadTagUnsigned(asset, "MeshTriangles", observed))
+				{
+					result.diagnostics.push_back({rule.id, asset.objectPath, AnalysisDiagnosticCode::MeasurementUnavailable, "static mesh triangle metadata is unavailable"});
+				}
+				else if (observed > maximum)
+				{
+					AddNumericMetric(result, rule, asset, "static-mesh-triangles", observed, maximum, "static mesh triangle count exceeds limit");
+				}
+			}
+		}
+
+		void EvaluateSkeletalMesh(const Snapshot& snapshot, const RuleDefinition& rule, AnalysisResult& result)
+		{
+			std::uint64_t maximum = 0;
+			if (!ReadUnsignedParameter(rule, "maxVertices", maximum))
+			{
+				AddParameterDiagnostic(result, rule, "skeletal mesh rule requires maxVertices");
+				return;
+			}
+			for (const AssetRecord& asset : snapshot.assets)
+			{
+				if (asset.assetClass != "/Script/Engine.SkeletalMesh" || !MatchesScope(rule, asset.objectPath)) continue;
+				std::uint64_t observed = 0;
+				if (!ReadTagUnsigned(asset, "MeshVertices", observed))
+				{
+					result.diagnostics.push_back({rule.id, asset.objectPath, AnalysisDiagnosticCode::MeasurementUnavailable, "skeletal mesh vertex metadata is unavailable"});
+				}
+				else if (observed > maximum)
+				{
+					AddNumericMetric(result, rule, asset, "skeletal-mesh-vertices", observed, maximum, "skeletal mesh vertex count exceeds limit");
+				}
+			}
+		}
+
+		void EvaluateSound(const Snapshot& snapshot, const RuleDefinition& rule, AnalysisResult& result)
+		{
+			std::uint64_t maximumDuration = 0;
+			const std::vector<std::string> formats = ReadAllowedFormats(rule);
+			if (!ReadUnsignedParameter(rule, "maxDurationMs", maximumDuration) || formats.empty())
+			{
+				AddParameterDiagnostic(result, rule, "sound rule requires maxDurationMs and allowedFormats");
+				return;
+			}
+			for (const AssetRecord& asset : snapshot.assets)
+			{
+				if (asset.assetClass != "/Script/Engine.SoundWave" || !MatchesScope(rule, asset.objectPath)) continue;
+				std::uint64_t duration = 0;
+				const auto format = asset.tags.find("SoundFormat");
+				if (!ReadTagUnsigned(asset, "SoundDurationMs", duration) || format == asset.tags.end())
+				{
+					result.diagnostics.push_back({rule.id, asset.objectPath, AnalysisDiagnosticCode::MeasurementUnavailable, "sound metadata is unavailable"});
+					continue;
+				}
+				if (duration > maximumDuration) AddNumericMetric(result, rule, asset, "sound-duration-ms", duration, maximumDuration, "sound duration exceeds limit");
+				if (std::find(formats.begin(), formats.end(), format->second) == formats.end())
+				{
+					AddTextMetric(result, rule, asset, "sound-format", format->second, Join(formats), "sound format is not allowed");
+				}
+			}
+		}
 	}
 
 	bool GlobMatches(std::string_view pattern, std::string_view value)
@@ -458,6 +634,10 @@ namespace cookscope
 			else if (rule.id == "dependency.cycle") EvaluateCycles(snapshot, rule, result);
 			else if (rule.id == "dependency.max-fanout") EvaluateFanOut(snapshot, rule, result);
 			else if (rule.id == "dependency.max-depth") EvaluateDepth(snapshot, rule, result);
+			else if (rule.id == "resource.texture") EvaluateTexture(snapshot, rule, result);
+			else if (rule.id == "resource.static-mesh") EvaluateStaticMesh(snapshot, rule, result);
+			else if (rule.id == "resource.skeletal-mesh") EvaluateSkeletalMesh(snapshot, rule, result);
+			else if (rule.id == "resource.sound") EvaluateSound(snapshot, rule, result);
 			else if (rule.id.starts_with("budget.")) EvaluateBudget(snapshot, rule, result);
 			else result.diagnostics.push_back({rule.id, {}, AnalysisDiagnosticCode::UnsupportedRule, "rule is not implemented"});
 		}
