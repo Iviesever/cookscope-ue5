@@ -2,7 +2,7 @@
 
 ## Current state
 
-The dedicated local repository is on `feat/cookscope-0.1`. Core/CLI, UE 5.8 Editor, typed Registry/Manager graph, 20 real fixtures, Data Validation, real Zen Cook, four reports, bounded Slate workflow, cooperative/hard timeouts, clean-source smoke, BuildPlugin, and fresh extraction have all passed at least one source-bound run. The initial independent audit found six High issues; implementation fixes are committed at `a27f210`. A new real baseline `66256ac` and candidate `f204b3b` produce exactly one Added 892-byte Cook asset. Final full-suite/package/clean-source replay and independent audit rerun remain.
+The dedicated local repository is on `feat/cookscope-0.1`. The initial independent audit found six High issues; implementation fixes landed at `a27f210`, followed by a real baseline `66256ac`, candidate `f204b3b`, and stable Manage-edge fix `06a2b5a`. Final source-bound MQB/Core/UE/docs, clean Cook, one-change diff, BuildPlugin, package extraction, and clean-source smoke are all GREEN. Only the independent read-only audit rerun remains locally; GitHub PR/Release stays user-blocked.
 
 ## Immutable constraints
 
@@ -16,4 +16,4 @@ The dedicated local repository is on `feat/cookscope-0.1`. Core/CLI, UE 5.8 Edit
 
 ## Resume point
 
-Finish documentation/evidence updates, run the complete Core/UE/docs suite on the final commit, rebuild and smoke the final source-bound plugin package, run clean-source smoke, then request an independent read-only audit rerun. Do not perform GitHub authentication or remote release work.
+Run the independent read-only audit rerun against the final repository. If it reports no Blocker/High, mark `AUDIT-01` PASS and keep remote repository/PR/tag/Release gates BLOCKED. Do not perform GitHub authentication or remote release work.

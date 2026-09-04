@@ -18,6 +18,16 @@
 - Candidate commit `f204b3b` restores only that exact asset. Candidate clean Cook: 506 total packages, 499 cooked, 7 platform-skipped, 0 errors/warnings; snapshot has 9 scoped assets and 3 actual-cooked assets.
 - Real diff is strictly one Added `DA_Candidate`, 892 actual-cooked bytes. No stable asset, dependency, or size delta is present. Editor comparison Automation observes the same one-change summary.
 
+## 2026-09-05 — Post-audit final local replay
+
+- A full seven-test UE run exposed order-dependent Manage facts after earlier tests refreshed Asset Manager. The scanner stopped using mutable `GetManagedPackageList`/Primary-ID database edges and now derives stable Manage edges from serialized Asset Bundle paths. Focused and full Automation then observed the same one-change comparison. Commit: `06a2b5a`.
+- Final MQB probe at `06a2b5a`: 10 clean compile misses/1 link miss; immediate no-op 10 compile hits/1 link hit; intentional failure exit 4. CLI: 56,832 bytes, SHA-256 `CA8FB334BCE419F9B527F802C836F274546D2724B58DE492E3EDC744CEC85A6E`.
+- Final Core/CLI suite: all 16 contract executables and CLI process checks PASS. Final UE suite: UBT, 20 fixtures, 7 PACT Automation tests, bootstrap 0/2/3/4/5, full audit 2/0/5, hard timeout 5 in 2.87 seconds, and one-change real Cook diff PASS.
+- Final BuildPlugin package: `Artifacts/Packages/CookScope-06a2b5aa7c37`, 84 files, 229,223,869 bytes. Editor, Game Development, and Game Shipping builds succeeded.
+- Final package smoke ZIP: 52,829,697 bytes, SHA-256 `2BC271D212AD711B0BE29BA61E7A38CE7E5DD6CF7453598144EA948866AB90E7`; descriptor SHA-256 matched before/after extraction; packaged Core/Commandlet/Editor loaded and exited 0.
+- Final clean-source archive: 447,731 bytes, SHA-256 `9D5136CD8EF76E2D65A65830C2B245890EF6B132FAAAC92AE98E0F8959FB17AD`; no `.git`; fresh MQB, UBT, 20 fixtures, and production-tab Editor smoke all returned 0.
+- `scripts/Test-Docs.ps1` remains PASS. Independent audit rerun is the only remaining local gate.
+
 ## 2026-09-05 — PACT-60 production Editor workflow
 
 - RED proved the original Nomad Tab still hosted a placeholder and the Editor session contract was absent.
