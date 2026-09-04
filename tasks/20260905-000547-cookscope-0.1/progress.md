@@ -1,5 +1,11 @@
 # Progress
 
+## 2026-09-05 — Goal continuation source
+
+- Preserved the continued human objective byte-for-byte as `goal-objective-continuation.md` without replacing the first objective required by repository policy.
+- Continued objective size: 20,655 bytes; SHA-256 `D9FFA34A76AE54BFE4A1A383DF0440AE3D22B219FD6CCF67348A8DE097BAE779`.
+- The user still declines GitHub login. Local Git work continues; remote repository/PR/tag/Release gates remain explicitly incomplete and no authentication will be attempted without a new direct instruction.
+
 ## 2026-09-05 — State recovery
 
 - Target local directory was absent; initialized the new dedicated repository at `D:\program\cookscope-ue5` on local `main` without touching existing directories.
