@@ -15,6 +15,7 @@ public class CookScopeEditor : ModuleRules
 			"Core",
 			"CoreUObject",
 			"Engine",
+			"InputCore",
 			"LevelEditor",
 			"Projects",
 			"Slate",

@@ -5,6 +5,7 @@
 
 class SDockTab;
 class FSpawnTabArgs;
+class FCookScopeEditorSession;
 
 class COOKSCOPEEDITOR_API FCookScopeEditorModule final : public IModuleInterface
 {
@@ -17,4 +18,5 @@ public:
 
 private:
 	TSharedRef<SDockTab> SpawnCookScopeTab(const FSpawnTabArgs& SpawnTabArgs);
+	TSharedPtr<FCookScopeEditorSession> Session;
 };

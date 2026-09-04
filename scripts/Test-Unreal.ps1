@@ -31,11 +31,12 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 $automationText = [System.IO.File]::ReadAllText($automationLog)
-if ($automationText -notmatch 'Found 4 automation tests' -or
+if ($automationText -notmatch 'Found 5 automation tests' -or
     $automationText -notmatch 'Test Completed\. Result=\{Success\}.*CookScope\.PACT00\.EditorAndCommandletContracts' -or
     $automationText -notmatch 'Test Completed\. Result=\{Success\}.*CookScope\.PACT20\.RealAssetRegistryScan' -or
     $automationText -notmatch 'Test Completed\. Result=\{Success\}.*CookScope\.PACT30\.DataValidationReuse' -or
     $automationText -notmatch 'Test Completed\. Result=\{Success\}.*CookScope\.PACT40\.CookedRegistrySnapshot' -or
+    $automationText -notmatch 'Test Completed\. Result=\{Success\}.*CookScope\.PACT60\.EditorWorkflow' -or
     $automationText -notmatch '\*\*\*\* TEST COMPLETE\. EXIT CODE: 0 \*\*\*\*') {
   throw "CookScope Automation success markers were not found; log: $automationLog"
 }

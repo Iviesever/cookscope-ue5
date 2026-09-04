@@ -15,6 +15,7 @@ public class CookScopeSampleEditor : ModuleRules
 			"DataValidation",
 			"Engine",
 			"GameplayTags",
+			"Projects",
 			"UnrealEd"
 		});
 	}

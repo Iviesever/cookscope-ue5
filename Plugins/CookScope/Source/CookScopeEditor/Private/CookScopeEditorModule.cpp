@@ -1,9 +1,10 @@
 #include "CookScopeEditorModule.h"
 
+#include "CookScopeEditorSession.h"
+#include "SCookScopePanel.h"
+
 #include "Framework/Docking/TabManager.h"
 #include "Widgets/Docking/SDockTab.h"
-#include "Widgets/Layout/SBorder.h"
-#include "Widgets/Text/STextBlock.h"
 
 #define LOCTEXT_NAMESPACE "FCookScopeEditorModule"
 
@@ -24,6 +25,7 @@ TSharedPtr<SDockTab> FCookScopeEditorModule::InvokeTab()
 
 void FCookScopeEditorModule::StartupModule()
 {
+	Session = MakeShared<FCookScopeEditorSession>();
 	FGlobalTabmanager::Get()->RegisterNomadTabSpawner(
 		CookScopeTabName,
 		FOnSpawnTab::CreateRaw(this, &FCookScopeEditorModule::SpawnCookScopeTab))
@@ -34,6 +36,15 @@ void FCookScopeEditorModule::StartupModule()
 
 void FCookScopeEditorModule::ShutdownModule()
 {
+	if (const TSharedPtr<SDockTab> Existing = FGlobalTabmanager::Get()->FindExistingLiveTab(FTabId(CookScopeTabName)))
+	{
+		Existing->RequestCloseTab();
+	}
+	if (Session)
+	{
+		Session->Shutdown();
+		Session.Reset();
+	}
 	FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(CookScopeTabName);
 }
 
@@ -43,12 +54,8 @@ TSharedRef<SDockTab> FCookScopeEditorModule::SpawnCookScopeTab(const FSpawnTabAr
 	return SNew(SDockTab)
 		.TabRole(ETabRole::NomadTab)
 		[
-			SNew(SBorder)
-			.Padding(16.0f)
-			[
-				SNew(STextBlock)
-				.Text(LOCTEXT("BootstrapMessage", "CookScope is loaded. Asset audit controls are added in subsequent verified slices."))
-			]
+			SNew(SCookScopePanel)
+			.Session(Session)
 		];
 }
 
