@@ -4,6 +4,8 @@ The sample registers `UCookScopeFixtureAsset` as Primary Asset type `CookScopeFi
 
 CookScope asks `UAssetManager` for Primary ID, rules, Bundle entries, managed packages, and management dependencies, then merges those facts with the Asset Registry graph. Duplicate facts are normalized as sets.
 
+`CookScopeEditor` snapshots the management database once at PostEngineInit. Scans then combine explicit Bundle paths with `GetManagedPackageList` and Primary-ID Manage dependencies. The real fixture proves recursive ownership of `DA_Runtime`/`DA_EditorOnly` even though neither belongs to the Primary asset's `Default` Bundle.
+
 Primary Assets are ownership/management roots. Secondary assets are the packages they reference or manage. A Soft reference does not load immediately, while a Manage edge records Asset Manager ownership; either can participate in a why-cooked path depending on the selected edge mask.
 
 P0 Asset Manager rules cover required Primary IDs/types, required Bundles, required/conflicting Chunks, AlwaysCook/NeverCook conflicts, and expected/unexpected Cook membership. Missing data is a diagnostic, not a guessed value.

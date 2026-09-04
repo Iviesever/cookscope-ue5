@@ -14,8 +14,8 @@ Exit codes are stable:
 
 The in-process deadline is checked during the bounded Registry loop, after each phase, and before report publication. An expired audit writes no reports. Each report is written beside its destination as `.tmp` and atomically replaced. Input files and Registry result sizes also have hard limits.
 
-For a strict wall-clock CI boundary, use `scripts/Invoke-CookScopeAudit.ps1`. It starts the exact `UnrealEditor-Cmd` process without a shell, streams output to a local log, waits the requested duration, and terminates that process tree on expiry. Both cooperative and hard timeout paths return 5.
+For a strict wall-clock CI boundary, use `scripts/Invoke-CookScopeAudit.ps1`. It starts the exact `UnrealEditor-Cmd` process without a shell and always targets a unique sibling staging directory. On success it verifies all five reports and switches the whole directory; on timeout it terminates that process tree, deletes staging, preserves any prior report set, and returns 5.
 
-`Tests/UE/FullAuditCommandletContract.ps1` verifies 2/0/5 full-mode behavior, a hard timeout shorter than a deterministic 10-second stall, and absence of partial/temp files. `Tests/UE/CommandletContract.ps1` separately proves the complete 0/2/3/4/5 bootstrap matrix.
+`Tests/UE/FullAuditCommandletContract.ps1` verifies 2/0/5 full-mode behavior and a hard timeout during a deterministic 30-second stall after the first staged JSON write. The old five-file report set stays byte-identical and no staging directory remains. `Tests/UE/CommandletContract.ps1` separately proves the complete 0/2/3/4/5 bootstrap matrix.
 
 The checked-in workflow targets a self-hosted Windows runner with UE 5.8 and MQB. No hosted GitHub run is claimed in this local-only delivery.

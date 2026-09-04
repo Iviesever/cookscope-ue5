@@ -28,6 +28,15 @@
 - Final clean-source archive: 447,731 bytes, SHA-256 `9D5136CD8EF76E2D65A65830C2B245890EF6B132FAAAC92AE98E0F8959FB17AD`; no `.git`; fresh MQB, UBT, 20 fixtures, and production-tab Editor smoke all returned 0.
 - `scripts/Test-Docs.ps1` remains PASS. Independent audit rerun is the only remaining local gate.
 
+## 2026-09-05 — Second independent audit remediation
+
+- First audit rerun closed multi-kind/rename diff, aggregate HTML, JUnit/SARIF diagnostics, bounded Editor acquisition, and real P0 fixture coverage. It found two remaining High issues: hard timeout could interrupt a multi-file publish, and stable scanning had removed non-Bundle Manager ownership.
+- `Invoke-CookScopeAudit.ps1` now writes only to a unique staging directory. A successful 0/2 result must contain all five reports before an all-directory switch; timeout/error deletes staging and never touches the previously published directory.
+- E2E prepopulated five sentinel reports, stalled for 30 seconds after the first staged JSON, hard-timed out in 16.992 seconds, returned 5, preserved all five sentinel bytes, and left no staging directory.
+- Asset Manager managed-package and Primary-ID dependencies were restored. The Editor module refreshes the management database once at PostEngineInit; per-scan discovery/refresh remains disabled and bounded. A real non-Bundle test proves `DA_Primary` recursively manages `DA_Runtime` and `DA_EditorOnly`.
+- To remove refresh-order drift, checked baseline/candidate snapshots now contain the same stable non-Bundle Manager facts. Real diff remains exactly one Added 892-byte `DA_Candidate`, and Editor comparison matches.
+- Second remediation implementation commit: `1f2b183`.
+
 ## 2026-09-05 — PACT-60 production Editor workflow
 
 - RED proved the original Nomad Tab still hosted a placeholder and the Editor session contract was absent.
