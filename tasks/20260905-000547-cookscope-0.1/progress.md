@@ -15,11 +15,20 @@
 ## Current PACT slice
 
 ```text
-Objective: Implement PACT-20 deterministic typed graph behavior before binding it to real UE Asset Registry data.
-Gap: Snapshots carry typed edges, but no graph index, traversal, reverse-reference, path, cycle, unresolved-target, or limit behavior existed.
-Scope: Pure Core graph algorithms under MQB; UE scanning remains a separate RED/GREEN slice.
-Done when: stable direct/reverse/path/cycle queries pass bounded tests and the UE adapter produces the same edge kinds from a real registry scan.
+Objective: Implement PACT-30 shared rule evaluation in reviewable rule-family slices.
+Gap: Rule configs and snapshots parse, but they did not produce findings, measurement diagnostics, or scope decisions.
+Scope: Shared scope/glob and finding model first; naming/path/budget, dependency, resource metadata, then Asset Manager/Cook families.
+Done when: every P0 rule family has positive/negative fixtures, stable findings, explicit unavailable data, and UE Data Validation reuse.
 ```
+
+## 2026-09-05 — PACT-30 shared scope, naming, path, and asset-size rules
+
+- RED: `mqb run Tests/Core/RuleEngineContractTests.cpp --no-discover -I Plugins/CookScope/Source/CookScopeCore/Public --std 20 --profile release -o CookScopeRuleEngineContractTests` exited `1` with C1083 because `cookscope/rules.h` did not exist.
+- GREEN: the test plus `rules.cpp`, strict Rule Config, and JSON sources exited `0` and printed `PASS: shared naming, path, budget, scope, and measurement rule engine contract`.
+- Proven behavior: deterministic `**`/`*`/`?` globs, Include then Exclude then explicit Exception precedence, type-specific asset prefixes, forbidden paths, and per-asset byte budgets.
+- Budget findings preserve requested measurement kind, observed bytes, and limit. Missing actual-cooked data produces stable `MeasurementUnavailable` diagnostics rather than a zero or estimate.
+- Findings and diagnostics sort by Rule ID, Asset Path, then message. Unsupported/invalid parameter diagnostics are explicit.
+- Fresh `scripts/Test.ps1`: exit `0`; eight Core/file test targets plus process CLI passed; MQB discovered exactly eight production translation units.
 
 ## 2026-09-05 — PACT-20 deterministic typed graph core
 
