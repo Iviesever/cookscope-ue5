@@ -9,7 +9,7 @@ Status is fail-closed: `NOT RUN`, `FAIL`, `BLOCKED`, or `PASS`. A source file ex
 | PACT-00-03 | Editor tab opens | Automation/manual evidence and screenshot | PASS: Automation invoked and closed real Nomad Tab at `4dbbbae` |
 | PACT-00-04 | Commandlet JSON and stable exit codes | Three E2E invocations | PASS: real Editor-Cmd exits `0/2/3/4/5` at `4dbbbae` |
 | PACT-00-05 | MQB capability boundary | Clean/no-op/failure/identity matrix | NOT RUN |
-| PACT-10-01 | Versioned snapshot and strict rule schemas | RED/GREEN core tests and canonical golden files | NOT RUN |
+| PACT-10-01 | Versioned snapshot and strict rule schemas | RED/GREEN core tests and canonical golden files | PASS: Core + public artifact round-trips; external Python validator unavailable |
 | PACT-20-01 | Typed Asset Registry/Asset Manager graph | Real fixture scan and typed-edge tests | NOT RUN |
 | PACT-20-02 | Direct/reverse/why-cooked/path/cycle/limit behavior | Deterministic graph tests and commandlet report | NOT RUN |
 | PACT-30-01 | P0 naming/path/dependency/resource/Asset Manager/Cook rules | Positive/negative fixtures and rule tests | NOT RUN |

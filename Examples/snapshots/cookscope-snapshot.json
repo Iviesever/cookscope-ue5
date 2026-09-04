@@ -1,0 +1,42 @@
+{
+  "schema": "cookscope.snapshot/1",
+  "provenance": {
+    "engineVersion": "5.8.0-55116800",
+    "platform": "Windows",
+    "cookConfiguration": "Development",
+    "sourceSha": "0000000000000000000000000000000000000000"
+  },
+  "assets": [
+    {
+      "objectPath": "/Game/Fixtures/T_示例.T_示例",
+      "packageName": "/Game/Fixtures/T_示例",
+      "assetClass": "Texture2D",
+      "packagePath": "/Game/Fixtures",
+      "primaryAssetId": null,
+      "diskSize": {
+        "kind": "package-disk",
+        "bytes": 128
+      },
+      "cookedSize": {
+        "kind": "unavailable"
+      },
+      "chunkIds": [0],
+      "assetBundles": ["Default"],
+      "tags": {
+        "FixtureId": "schema-example",
+        "Provenance": "hand-authored-contract-fixture"
+      },
+      "dependencies": [
+        {
+          "target": "/Game/Fixtures/M_Destination.M_Destination",
+          "kind": "hard"
+        },
+        {
+          "target": "/Game/Fixtures/DA_Primary.DA_Primary",
+          "kind": "manage"
+        }
+      ],
+      "sourceProvenance": "hand-authored-contract-fixture-not-an-ue-scan"
+    }
+  ]
+}

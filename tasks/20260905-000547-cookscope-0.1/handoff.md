@@ -2,7 +2,7 @@
 
 ## Current state
 
-The dedicated local repository has a verified contract baseline at `2bede4a50f47ee332e11f2dfbb90beb596c9dc0e`. Work is on `feat/cookscope-0.1`. At source SHA `4dbbbaebadca79944b38ee52f4e3981d90e1dd01`, MQB Core/CLI, UE 5.8 Editor build, real Editor-Cmd Automation/Tab, and five-way Commandlet E2E are GREEN. Source-bound BuildPlugin is externally blocked by an unrelated AuthorityArena UE pipeline taking the global UBT mutex between RunUAT stages; do not terminate it.
+The dedicated local repository has a verified contract baseline at `2bede4a50f47ee332e11f2dfbb90beb596c9dc0e`. Work is on `feat/cookscope-0.1`. At source SHA `4dbbbaebadca79944b38ee52f4e3981d90e1dd01`, MQB Core/CLI, UE 5.8 Editor build, real Editor-Cmd Automation/Tab, and five-way Commandlet E2E are GREEN. PACT-10 strict JSON, Rule Config, Snapshot, public Schema, and fixture round-trips are GREEN under MQB. Source-bound BuildPlugin is externally blocked by an unrelated AuthorityArena UE pipeline taking the global UBT mutex between RunUAT stages; do not terminate it.
 
 ## Immutable constraints
 
@@ -16,4 +16,4 @@ The dedicated local repository has a verified contract baseline at `2bede4a50f47
 
 ## Resume point
 
-Continue PACT-10 strict model/JSON work under MQB while the unrelated UE pipeline runs. Retry source-bound BuildPlugin from a fresh package path only after the global UBT mutex is free.
+Begin PACT-20 deterministic typed graph RED tests under MQB. Retry source-bound BuildPlugin from a fresh package path only after the unrelated UE pipeline and global UBT mutex are idle.

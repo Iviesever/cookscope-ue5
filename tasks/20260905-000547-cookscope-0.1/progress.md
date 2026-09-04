@@ -45,6 +45,15 @@ Done when: malformed/duplicate/unknown data fails closed and equivalent valid ru
 - Parser canonicalizes asset, dependency, Chunk, and Bundle ordering; rejects duplicate object paths, invalid SHA/numeric values, unknown fields, and contradictory size records.
 - Fresh `scripts/Test.ps1`: exit `0`; five Core test executables and process CLI passed; MQB discovered exactly six production translation units.
 
+## 2026-09-05 — PACT-10 public Schema and example artifacts
+
+- File-artifact RED: `CookScopeSchemaArtifactsContractTests` built successfully and then failed because both public Schema files and both example files were absent.
+- GREEN: after adding Draft 2020-12 Rule/Snapshot Schemas plus explicitly hand-authored fixture examples, the same executable printed `PASS: public Schema and canonical example artifacts`.
+- The test validates both Schema files as strict JSON with stable `$id`, then sends both examples through domain parse -> canonical write -> domain parse.
+- `Examples/snapshots/cookscope-snapshot.json` explicitly labels its asset source as `hand-authored-contract-fixture-not-an-ue-scan`; it is not presented as Asset Registry or Cook evidence.
+- Independent Python Draft 2020-12 validation was attempted but could not run because global Python 3.13 lacks the `jsonschema` module. No dependency was installed into the user's global environment and no external-validator success is claimed.
+- Fresh `scripts/Test.ps1`: exit `0`; all six Core/file-artifact test executables plus the CLI process contract passed; MQB production discovery remained six translation units.
+
 ## 2026-09-05 — Local baseline and PACT-00 core contract
 
 - Local `main` baseline commit: `2bede4a50f47ee332e11f2dfbb90beb596c9dc0e`.
