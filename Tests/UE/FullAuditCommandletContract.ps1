@@ -116,6 +116,65 @@ $wrapper = Join-Path $repositoryRoot 'scripts\Invoke-CookScopeAudit.ps1'
 if (-not (Test-Path -LiteralPath $wrapper -PathType Leaf)) {
   throw "Strict CI audit wrapper is missing: $wrapper"
 }
+$foreignOutput = Join-Path $runRoot 'foreign-output'
+$foreignSubdirectory = Join-Path $foreignOutput 'other-tool'
+New-Item -ItemType Directory -Path $foreignSubdirectory -Force | Out-Null
+[System.IO.File]::WriteAllText((Join-Path $foreignOutput 'keep.txt'), "keep-root`n")
+[System.IO.File]::WriteAllText((Join-Path $foreignSubdirectory 'keep.txt'), "keep-child`n")
+& pwsh -NoLogo -NoProfile -File $wrapper `
+  -EngineRoot $EngineRoot `
+  -Project $project `
+  -Config $config `
+  -Output $foreignOutput `
+  -SourceSha $sourceSha `
+  -Scope '/Game/CookScopeFixtures' `
+  -TimeoutSeconds 120 `
+  -FailOnViolation 'false'
+$foreignExit = $LASTEXITCODE
+if ($foreignExit -ne 4 -or
+    [System.IO.File]::ReadAllText((Join-Path $foreignOutput 'keep.txt')) -ne "keep-root`n" -or
+    [System.IO.File]::ReadAllText((Join-Path $foreignSubdirectory 'keep.txt')) -ne "keep-child`n") {
+  throw "Wrapper must reject and preserve an output directory with foreign content; exit=$foreignExit"
+}
+
+$wrapperCleanOutput = Join-Path $runRoot 'wrapper-clean'
+& pwsh -NoLogo -NoProfile -File $wrapper `
+  -EngineRoot $EngineRoot `
+  -Project $project `
+  -Config $config `
+  -Output $wrapperCleanOutput `
+  -SourceSha $sourceSha `
+  -Scope '/Game/CookScopeFixtures/Targets' `
+  -TimeoutSeconds 120 `
+  -FailOnViolation 'true'
+$wrapperCleanExit = $LASTEXITCODE
+if ($wrapperCleanExit -ne 0) {
+  throw "Expected wrapper clean publication exit 0, got $wrapperCleanExit"
+}
+
+$wrapperViolationOutput = Join-Path $runRoot 'wrapper-violation'
+& pwsh -NoLogo -NoProfile -File $wrapper `
+  -EngineRoot $EngineRoot `
+  -Project $project `
+  -Config $config `
+  -Output $wrapperViolationOutput `
+  -SourceSha $sourceSha `
+  -Scope '/Game/CookScopeFixtures/Naming' `
+  -TimeoutSeconds 120 `
+  -FailOnViolation 'true'
+$wrapperViolationExit = $LASTEXITCODE
+if ($wrapperViolationExit -ne 2) {
+  throw "Expected wrapper violation publication exit 2, got $wrapperViolationExit"
+}
+$expectedWrapperFiles = @('cookscope.json', 'cookscope.sarif', 'cookscope.junit.xml', 'cookscope.html', 'cookscope.snapshot.json', '.cookscope-output')
+foreach ($wrapperOutput in @($wrapperCleanOutput, $wrapperViolationOutput)) {
+  foreach ($name in $expectedWrapperFiles) {
+    if (-not (Test-Path -LiteralPath (Join-Path $wrapperOutput $name) -PathType Leaf)) {
+      throw "Successful wrapper publication is incomplete: $wrapperOutput\$name"
+    }
+  }
+}
+
 $hardTimeoutOutput = Join-Path $runRoot 'hard-timeout'
 $expectedSentinels = @('cookscope.json', 'cookscope.sarif', 'cookscope.junit.xml', 'cookscope.html', 'cookscope.snapshot.json')
 New-Item -ItemType Directory -Path $hardTimeoutOutput -Force | Out-Null
@@ -168,5 +227,8 @@ if (@(Get-ChildItem -LiteralPath (Split-Path -Parent $hardTimeoutOutput) -Direct
   TimeoutExitCode = $timeoutExit
   HardTimeoutExitCode = $hardTimeoutExit
   HardTimeoutSeconds = [math]::Round($hardStopwatch.Elapsed.TotalSeconds, 3)
+  ForeignDirectoryExitCode = $foreignExit
+  WrapperCleanExitCode = $wrapperCleanExit
+  WrapperViolationExitCode = $wrapperViolationExit
   FindingCount = @($json.findings).Count
 } | Format-List

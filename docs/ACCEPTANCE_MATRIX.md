@@ -19,10 +19,10 @@ Status is fail-closed: `NOT RUN`, `FAIL`, `BLOCKED`, or `PASS`. A source file ex
 | PACT-50-01 | JSON/SARIF/JUnit validity and semantic consistency | Schema/parser tests and cross-report assertions | PASS: deterministic Core + independent JSON/XML parsing |
 | PACT-50-02 | Self-contained responsive offline HTML | Browser desktop/narrow tests; console warning/error count 0 | PASS: desktop/narrow Chrome captures, live filters/expansion, Console `[]` |
 | PACT-60-01 | Usable cancellable Slate tool and Editor actions | Automation, screenshots, cancel/unload evidence | PASS: indexed bounded acquisition, async Core, cancel/shutdown, filters/diff/why-cooked/export, real screenshot |
-| PACT-70-01 | Strict commandlet/CI timeout and failure policy | Success/violation/config/internal/timeout E2E | PASS: cooperative and hard process-tree timeout exit 5; no partial files; atomic report replacement |
+| PACT-70-01 | Strict commandlet/CI timeout and failure policy | Success/violation/config/internal/timeout E2E | PASS: cooperative/hard timeout exit 5; transactional report replacement; foreign output preserved with exit 4 |
 | PACT-70-02 | Complete core and UE Automation suites | Fresh logs bound to source SHA | PASS: source `f26472e`, 16 Core + CLI, 7 UE PACT, transactional timeout and real-diff E2E |
 | PACT-70-03 | BuildPlugin and local package | Paths, sizes, SHA-256, source SHA | PASS: source `f26472e`, 84 files, 229,251,282 bytes; no Release upload |
 | PACT-70-04 | Fresh extraction and clean-source smoke | Commands, logs, checksums | PASS: source `f26472e`; package ZIP and no-`.git` source archive both load/build/test cleanly |
 | DOC-01 | Portfolio/interview/release documentation matches facts | Link and claim audit | PASS: final `scripts/Test-Docs.ps1` validates docs, links, formats, path hygiene, and source-only boundary |
-| AUDIT-01 | Independent read-only audit has no Blocker/High | Auditor report and post-fix rerun | FAIL: first rerun closed 5/6 original High but found 2 High; both fixed, final rerun pending |
+| AUDIT-01 | Independent read-only audit has no Blocker/High | Auditor report and post-fix rerun | FAIL: latest rerun found one High in output-directory ownership; fixed locally, final rerun pending |
 | RELEASE-01 | Merge commit, annotated v0.1.0 and source-only Release with zero assets | Git/GitHub evidence | BLOCKED: user declined authentication |

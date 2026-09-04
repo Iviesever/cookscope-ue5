@@ -126,15 +126,40 @@ $expectedReports = @('cookscope.json', 'cookscope.sarif', 'cookscope.junit.xml',
 foreach ($name in $expectedReports) {
   if (-not (Test-Path -LiteralPath (Join-Path $stagingOutput $name) -PathType Leaf)) {
     Remove-StagedDirectory $stagingOutput
-    Write-Error "Successful audit did not stage the complete report set: $name"
+    [Console]::Error.WriteLine("Successful audit did not stage the complete report set: $name")
     exit 4
   }
 }
 
+$ownershipMarker = '.cookscope-output'
+[System.IO.File]::WriteAllText(
+  (Join-Path $stagingOutput $ownershipMarker),
+  "cookscope-output/1`n",
+  [System.Text.UTF8Encoding]::new($false))
+
 if ([System.IO.File]::Exists($Output)) {
   Remove-StagedDirectory $stagingOutput
-  Write-Error "Audit output path is a file: $Output"
+  [Console]::Error.WriteLine("Audit output path is a file: $Output")
   exit 4
+}
+if ([System.IO.Directory]::Exists($Output)) {
+  $managedNames = [System.Collections.Generic.HashSet[string]]::new(
+    [System.StringComparer]::OrdinalIgnoreCase)
+  foreach ($name in $expectedReports + @($ownershipMarker)) {
+    [void]$managedNames.Add($name)
+  }
+  $foreignEntries = @(
+    [System.IO.Directory]::EnumerateFileSystemEntries($Output) |
+      Where-Object {
+        -not [System.IO.File]::Exists($_) -or
+        -not $managedNames.Contains([System.IO.Path]::GetFileName($_))
+      }
+  )
+  if ($foreignEntries.Count -ne 0) {
+    Remove-StagedDirectory $stagingOutput
+    [Console]::Error.WriteLine("Audit output directory contains content not owned by CookScope: $Output")
+    exit 4
+  }
 }
 $movedPrevious = $false
 try {
@@ -152,7 +177,7 @@ catch {
   if ($movedPrevious -and -not [System.IO.Directory]::Exists($Output) -and [System.IO.Directory]::Exists($backupOutput)) {
     [System.IO.Directory]::Move($backupOutput, $Output)
   }
-  Write-Error "Unable to publish complete audit report set: $($_.Exception.Message)"
+  [Console]::Error.WriteLine("Unable to publish complete audit report set: $($_.Exception.Message)")
   exit 4
 }
 exit $exitCode

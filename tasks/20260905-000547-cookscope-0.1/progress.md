@@ -1,5 +1,13 @@
 # Progress
 
+## 2026-09-05 — Third independent audit remediation
+
+- The latest read-only audit at `e708b9a` found no Blocker and one High: successful wrapper publication replaced an entire existing output directory even when it contained files not owned by CookScope.
+- RED extended `FullAuditCommandletContract.ps1`: the wrapper returned 0 and removed a root sentinel plus an unrelated nested directory instead of rejecting the destination.
+- GREEN now publishes a `.cookscope-output` marker, replaces only an empty/legacy/marked directory containing exclusively the five managed reports, and returns 4 without touching a directory containing any unknown file or subdirectory.
+- The full contract passed: foreign-directory 4 with both sentinel files byte-identical, clean 0, violation 2, cooperative timeout 5, and hard timeout 5 in 16.940 seconds with the old report set preserved.
+- A final independent read-only rerun remains required before `AUDIT-01` can pass.
+
 ## 2026-09-05 — Independent audit remediation
 
 - Required read-only audit at `5d7dade` found no Blocker and six High issues: multi-kind/renamed diff loss, hidden aggregate HTML findings, JUnit policy mismatch, unbounded Editor acquisition, cooperative-only Commandlet timeout, and incomplete real P0 fixtures. `AUDIT-01` remains fail-closed until a new independent rerun.
